@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ouvidor.IA Premium</title>
+  <title>Ouvidor.IA Premium V2</title>
   <style>
     :root{
       --bg:#f7f9fc;
@@ -13,7 +13,6 @@
       --text:#1f2a37;
       --muted:#6b7280;
       --blue:#2563eb;
-      --blue-soft:#dbeafe;
       --red:#dc2626;
       --green:#16a34a;
       --yellow:#d97706;
@@ -84,16 +83,8 @@
     button:hover{transform:translateY(-1px)}
     button:disabled{opacity:.55;cursor:not-allowed;transform:none}
 
-    .primary{
-      background:var(--blue);
-      color:#fff;
-    }
-
-    .danger{
-      background:var(--red);
-      color:#fff;
-    }
-
+    .primary{background:var(--blue);color:#fff}
+    .danger{background:var(--red);color:#fff}
     .ghost{
       background:#fff;
       color:var(--text);
@@ -168,20 +159,9 @@
       font-weight:800;
     }
 
-    .green{
-      background:#dcfce7;
-      color:#166534;
-    }
-
-    .yellow{
-      background:#fef3c7;
-      color:#92400e;
-    }
-
-    .red{
-      background:#fee2e2;
-      color:#991b1b;
-    }
+    .green{background:#dcfce7;color:#166534}
+    .yellow{background:#fef3c7;color:#92400e}
+    .red{background:#fee2e2;color:#991b1b}
 
     .hidden{display:none}
 
@@ -326,16 +306,16 @@
 
     .filter-grid{
       display:grid;
-      grid-template-columns:repeat(5,1fr);
+      grid-template-columns:repeat(6,1fr);
       gap:12px;
       margin-top:16px;
     }
 
-    @media(max-width:900px){
-      .filter-grid{grid-template-columns:1fr 1fr}
+    @media(max-width:1000px){
+      .filter-grid{grid-template-columns:repeat(3,1fr)}
     }
 
-    @media(max-width:600px){
+    @media(max-width:700px){
       .filter-grid{grid-template-columns:1fr}
     }
 
@@ -419,6 +399,14 @@
         </div>
 
         <div class="field">
+          <label>Ano Letivo</label>
+          <div class="input-row">
+            <input id="cfgYearLevel" placeholder="Ex.: 9º Ano Fund1 / 3º Ano Graduação / Infantil 3" />
+            <button class="ghost mic-btn" data-voice="cfgYearLevel">🎤</button>
+          </div>
+        </div>
+
+        <div class="field">
           <label>Nome da Turma</label>
           <div class="input-row">
             <input id="cfgClass" placeholder="Ex.: 3B" />
@@ -457,6 +445,14 @@
             <button class="ghost mic-btn" data-voice="cfgDate">🎤</button>
           </div>
         </div>
+
+        <div class="field">
+          <label>Duração do encontro (minutos)</label>
+          <div class="input-row">
+            <input id="cfgDuration" placeholder="Ex.: 45 minutos" />
+            <button class="ghost mic-btn" data-voice="cfgDuration">🎤</button>
+          </div>
+        </div>
       </div>
 
       <div class="controls">
@@ -472,9 +468,9 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "ouvidor_ia_premium_history_v3";
-  const CONFIG_KEY = "ouvidor_ia_premium_config_v3";
-  const AUDIO_DB_NAME = "ouvidor_ia_audio_db_v3";
+  const STORAGE_KEY = "ouvidor_ia_premium_history_v4";
+  const CONFIG_KEY = "ouvidor_ia_premium_config_v4";
+  const AUDIO_DB_NAME = "ouvidor_ia_audio_db_v4";
   const AUDIO_STORE = "audios";
 
   let recorder = null;
@@ -504,13 +500,6 @@
   const configBlock = document.getElementById("configBlock");
   const saveConfigBtn = document.getElementById("saveConfigBtn");
   const savedConfigPreview = document.getElementById("savedConfigPreview");
-
-  const cfgInstitution = document.getElementById("cfgInstitution");
-  const cfgClass = document.getElementById("cfgClass");
-  const cfgSubject = document.getElementById("cfgSubject");
-  const cfgTopic = document.getElementById("cfgTopic");
-  const cfgStudent = document.getElementById("cfgStudent");
-  const cfgDate = document.getElementById("cfgDate");
 
   function pad(n){ return String(n).padStart(2,"0"); }
   function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return `${pad(m)}:${pad(s)}`; }
@@ -572,32 +561,38 @@
     const cfg = getConfig();
     const parts = [];
     if (cfg.institution) parts.push(`Instituição: ${cfg.institution}`);
+    if (cfg.yearLevel) parts.push(`Ano Letivo: ${cfg.yearLevel}`);
     if (cfg.className) parts.push(`Turma: ${cfg.className}`);
     if (cfg.subject) parts.push(`Disciplina: ${cfg.subject}`);
     if (cfg.topic) parts.push(`Tema: ${cfg.topic}`);
     if (cfg.student) parts.push(`Aluno: ${cfg.student}`);
     if (cfg.date) parts.push(`Data: ${cfg.date}`);
+    if (cfg.durationMinutes) parts.push(`Duração: ${cfg.durationMinutes}`);
     savedConfigPreview.textContent = parts.length ? parts.join(" • ") : "Nenhuma configuração prévia.";
   }
 
   function loadConfigIntoFields(prefix = "cfg") {
     const cfg = getConfig();
     document.getElementById(prefix + "Institution").value = cfg.institution || "";
+    document.getElementById(prefix + "YearLevel").value = cfg.yearLevel || "";
     document.getElementById(prefix + "Class").value = cfg.className || "";
     document.getElementById(prefix + "Subject").value = cfg.subject || "";
     document.getElementById(prefix + "Topic").value = cfg.topic || "";
     document.getElementById(prefix + "Student").value = cfg.student || "";
     document.getElementById(prefix + "Date").value = cfg.date || "";
+    document.getElementById(prefix + "Duration").value = cfg.durationMinutes || "";
   }
 
   function readConfigFromFields(prefix = "cfg") {
     return {
       institution: document.getElementById(prefix + "Institution")?.value.trim() || "",
+      yearLevel: document.getElementById(prefix + "YearLevel")?.value.trim() || "",
       className: document.getElementById(prefix + "Class")?.value.trim() || "",
       subject: document.getElementById(prefix + "Subject")?.value.trim() || "",
       topic: document.getElementById(prefix + "Topic")?.value.trim() || "",
       student: document.getElementById(prefix + "Student")?.value.trim() || "",
       date: document.getElementById(prefix + "Date")?.value.trim() || "",
+      durationMinutes: document.getElementById(prefix + "Duration")?.value.trim() || ""
     };
   }
 
@@ -774,6 +769,7 @@
     return history.filter((item) => {
       const cfg = item.config || {};
       if (filters.institution && cfg.institution !== filters.institution) return false;
+      if (filters.yearLevel && cfg.yearLevel !== filters.yearLevel) return false;
       if (filters.className && cfg.className !== filters.className) return false;
       if (filters.subject && cfg.subject !== filters.subject) return false;
       if (filters.topic && cfg.topic !== filters.topic) return false;
@@ -838,7 +834,7 @@
       </div>
 
       <div class="card">
-        <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div class="top-line">
           <h3 style="margin:0;">Ouvir gravação</h3>
           <button class="ghost" id="playCurrentAudioBtn" ${record.recorded ? "" : "disabled"}>▶ Ouvir gravação</button>
         </div>
@@ -859,6 +855,14 @@
               <div class="input-row">
                 <input id="postInstitution" placeholder="Ex.: Colégio Super" value="${escapeHtml(record.config.institution || "")}" />
                 <button class="ghost mic-btn" data-voice="postInstitution">🎤</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Ano Letivo</label>
+              <div class="input-row">
+                <input id="postYearLevel" placeholder="Ex.: 9º Ano Fund1 / 3º Ano Graduação / Infantil 3" value="${escapeHtml(record.config.yearLevel || "")}" />
+                <button class="ghost mic-btn" data-voice="postYearLevel">🎤</button>
               </div>
             </div>
 
@@ -899,6 +903,14 @@
               <div class="input-row">
                 <input id="postDate" placeholder="10/Mar/2026" value="${escapeHtml(record.config.date || "")}" />
                 <button class="ghost mic-btn" data-voice="postDate">🎤</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Duração do encontro (minutos)</label>
+              <div class="input-row">
+                <input id="postDuration" placeholder="Ex.: 45 minutos" value="${escapeHtml(record.config.durationMinutes || "")}" />
+                <button class="ghost mic-btn" data-voice="postDuration">🎤</button>
               </div>
             </div>
           </div>
@@ -943,11 +955,13 @@
 
       history[idx].config = {
         institution: document.getElementById("postInstitution").value.trim(),
+        yearLevel: document.getElementById("postYearLevel").value.trim(),
         className: document.getElementById("postClass").value.trim(),
         subject: document.getElementById("postSubject").value.trim(),
         topic: document.getElementById("postTopic").value.trim(),
         student: document.getElementById("postStudent").value.trim(),
         date: document.getElementById("postDate").value.trim(),
+        durationMinutes: document.getElementById("postDuration").value.trim()
       };
 
       history[idx].socio = {
@@ -977,6 +991,7 @@
 
     const all = history;
     const institutionValues = uniqueValues(all, "institution");
+    const yearLevelValues = uniqueValues(all, "yearLevel");
     const classValues = uniqueValues(all, "className");
     const subjectValues = uniqueValues(all, "subject");
     const topicValues = uniqueValues(all, "topic");
@@ -1023,6 +1038,7 @@
           <div id="filtersBlock" class="hidden">
             <div class="filter-grid">
               ${renderFilterSelect("fInstitution", "Instituição", institutionValues)}
+              ${renderFilterSelect("fYearLevel", "Ano Letivo", yearLevelValues)}
               ${renderFilterSelect("fClass", "Turma", classValues)}
               ${renderFilterSelect("fSubject", "Disciplina", subjectValues)}
               ${renderFilterSelect("fTopic", "Tema", topicValues)}
@@ -1064,6 +1080,7 @@
     const update = () => {
       const filters = {
         institution: document.getElementById("fInstitution").value,
+        yearLevel: document.getElementById("fYearLevel").value,
         className: document.getElementById("fClass").value,
         subject: document.getElementById("fSubject").value,
         topic: document.getElementById("fTopic").value,
@@ -1102,6 +1119,7 @@
         ? items.map(item => {
             const details = [];
             if (item.config?.institution) details.push(item.config.institution);
+            if (item.config?.yearLevel) details.push(item.config.yearLevel);
             if (item.config?.className) details.push(item.config.className);
             if (item.config?.subject) details.push(item.config.subject);
             if (item.config?.topic) details.push(item.config.topic);
@@ -1125,7 +1143,7 @@
       document.getElementById("filtersBlock").classList.toggle("hidden");
     };
 
-    ["fInstitution","fClass","fSubject","fTopic","fStudent"].forEach(id => {
+    ["fInstitution","fYearLevel","fClass","fSubject","fTopic","fStudent"].forEach(id => {
       document.getElementById(id).onchange = update;
     });
 
@@ -1150,10 +1168,12 @@
 
     const details = [];
     if (record.config?.institution) details.push(record.config.institution);
+    if (record.config?.yearLevel) details.push(record.config.yearLevel);
     if (record.config?.className) details.push(record.config.className);
     if (record.config?.subject) details.push(record.config.subject);
     if (record.config?.topic) details.push(record.config.topic);
     if (record.config?.student) details.push(record.config.student);
+    if (record.config?.durationMinutes) details.push(record.config.durationMinutes);
 
     target.classList.remove("hidden");
     target.innerHTML = `
@@ -1286,11 +1306,13 @@
       const fd = new FormData();
       fd.append("audio", blob, "aula.webm");
       fd.append("institution", cfg.institution || "");
+      fd.append("yearLevel", cfg.yearLevel || "");
       fd.append("className", cfg.className || "");
       fd.append("subject", cfg.subject || "");
       fd.append("topic", cfg.topic || "");
       fd.append("student", cfg.student || "");
       fd.append("date", cfg.date || "");
+      fd.append("durationMinutes", cfg.durationMinutes || "");
 
       let data;
       try {
