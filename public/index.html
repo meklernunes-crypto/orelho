@@ -109,7 +109,7 @@ async function stopRecording(){
 
     try {
       const fd = new FormData();
-      fd.append('audio', blob, 'aula.webm');
+      fd.append('audio', blob, 'aula.wav');
       const resp = await fetch('/analyze', { method: 'POST', body: fd });
       const data = await resp.json();
       resultEl.classList.remove('hidden');
