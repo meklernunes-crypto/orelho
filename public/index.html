@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ouvidor.IA Real v2</title>
+  <style>
+    body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#e5e7eb}
+    .wrap{max-width:900px;margin:0 auto;padding:20px}
+    .card{background:#111827;border:1px solid #243244;border-radius:18px;padding:18px;margin-bottom:16px}
+    button{border:none;border-radius:14px;padding:14px 18px;font-size:16px;font-weight:700;cursor:pointer;margin-right:10px}
+    .primary{background:#2563eb;color:#fff}.danger{background:#b91c1c;color:#fff}
+    button[disabled]{opacity:.55;cursor:not-allowed}
+    .metric{font-size:32px;font-weight:800}
+    .muted,.small{color:#94a3b8}.small{font-size:12px}
+    .list{display:grid;gap:10px}.item{padding:12px;border:1px solid #243244;border-radius:14px;background:#0b1220}
+    canvas{width:100%;height:220px;background:#0b1220;border-radius:16px;border:1px solid #243244}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" style="text-align:center">
+    <h1>Ouvidor.IA Real v2</h1>
+    <div class="muted">Versão de compatibilidade com erro visível.</div>
+    <button id="startBtn" class="primary">Iniciar aula</button>
+    <button id="stopBtn" class="danger" disabled>Encerrar</button>
+    <div id="timer" class="metric" style="margin-top:14px;">00:00</div>
+    <div id="status" class="muted">Aguardando início.</div>
+  </div>
+
+  <div id="result" class="hidden"></div>
+</div>
+
+<script>
+let startBtn = document.getElementById('startBtn');
+let stopBtn = document.getElementById('stopBtn');
+let timerEl = document.getElementById('timer');
+let statusEl = document.getElementById('status');
+let resultEl = document.getElementById('result');
+
+let recorder = null, stream = null, chunks = [], startTime = null, timerInterval = null;
+let audioContext = null, analyser = null, sourceNode = null, frameId = null, secondTimer = null, perSecondDb = [], currentSecondPeak = 25;
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return `${pad(m)}:${pad(s)}`; }
+function drawNoiseChart(canvasId, samples){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(320, Math.floor(rect.width*2));
+  canvas.height = 440;
+  const ctx = canvas.getContext('2d');
+  const w=canvas.width,h=canvas.height;
+  const yForDb = db => h - ((db-25)/(85-25)) * (h-50) - 20;
+  ctx.clearRect(0,0,w,h);
+  [['rgba(34,197,94,.15)',25,40],['rgba(234,179,8,.15)',40,50],['rgba(239,68,68,.15)',50,85]].forEach(([color,from,to])=>{
+    const y1=yForDb(to), y2=yForDb(from); ctx.fillStyle=color; ctx.fillRect(50,y1,w-70,y2-y1);
+  });
+  ctx.strokeStyle='#3a4b67'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(50,20); ctx.lineTo(50,h-30); ctx.lineTo(w-20,h-30); ctx.stroke();
+  if(!samples.length){ ctx.fillStyle='#94a3b8'; ctx.fillText('Sem dados suficientes para gráfico.', 70, h/2); return; }
+  const maxX=samples.length-1 || 1;
+  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=4; ctx.beginPath();
+  samples.forEach((db,i)=>{ const x=60+(i/maxX)*(w-100); const y=yForDb(db); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+  ctx.stroke();
+}
+async function startRecording(){
+  chunks=[]; perSecondDb=[]; currentSecondPeak=25;
+  resultEl.classList.add('hidden');
+  stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+  recorder = new MediaRecorder(stream, { mimeType });
+  recorder.ondataavailable = e => { if(e.data.size > 0) chunks.push(e.data); };
+  recorder.start();
+  startTime = Date.now();
+  startBtn.disabled = true; stopBtn.disabled = false;
+  timerInterval = setInterval(()=>{ timerEl.textContent = fmtDuration(Math.floor((Date.now()-startTime)/1000)); }, 500);
+
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  await audioContext.resume();
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.2;
+  sourceNode = audioContext.createMediaStreamSource(stream);
+  sourceNode.connect(analyser);
+  const data = new Float32Array(analyser.fftSize);
+  function tick(){
+    analyser.getFloatTimeDomainData(data);
+    let sum = 0;
+    for(let i=0;i<data.length;i++) sum += data[i]*data[i];
+    const rms = Math.sqrt(sum/data.length);
+    let db = 35 + (Math.min(1, rms * 20) * 40);
+    db = Math.round(Math.max(25, Math.min(85, db)));
+    if(db > currentSecondPeak) currentSecondPeak = db;
+    frameId = requestAnimationFrame(tick);
+  }
+  frameId = requestAnimationFrame(tick);
+  secondTimer = setInterval(()=>{ perSecondDb.push(currentSecondPeak); currentSecondPeak = 25; statusEl.textContent = 'Captando aula...'; }, 1000);
+}
+async function stopRecording(){
+  stopBtn.disabled = true;
+  statusEl.textContent = 'Processando com IA...';
+  recorder.stop();
+  recorder.onstop = async () => {
+    clearInterval(timerInterval); cancelAnimationFrame(frameId); clearInterval(secondTimer);
+    stream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
+
+    try {
+      const fd = new FormData();
+      fd.append('audio', blob, 'aula.webm');
+      const resp = await fetch('/analyze', { method: 'POST', body: fd });
+      const data = await resp.json();
+      resultEl.classList.remove('hidden');
+      resultEl.innerHTML = `
+        <div class="card"><h2>Resumo da aula</h2><div class="item">${(data.summary || 'Sem resumo.')}</div></div>
+        <div class="card"><h3>Comandos</h3><div class="list">${(data.commands||[]).map(x=>`<div class="item">${x}</div>`).join('') || '<div class="item">Nenhum comando.</div>'}</div></div>
+        <div class="card"><h3>Pendências</h3><div class="list">${(data.pendings||[]).map(x=>`<div class="item">${x}</div>`).join('') || '<div class="item">Nenhuma pendência.</div>'}</div></div>
+        <div class="card"><h3>Transcrição</h3><div class="item">${(data.transcript || 'Sem transcrição.')}</div></div>
+        <div class="card"><h3>Diagnóstico técnico</h3><div class="item">debug: ${(data.debug || '—')}</div><div class="item">error: ${(data.error || '—')}</div><div class="item">detail: ${(data.detail || '—')}</div></div>
+        <div class="card"><h3>Ruído da aula</h3><canvas id="noiseChart"></canvas></div>
+      `;
+      setTimeout(()=>drawNoiseChart('noiseChart', perSecondDb), 50);
+    } catch(e){
+      resultEl.classList.remove('hidden');
+      resultEl.innerHTML = `<div class="card"><h2>Erro</h2><div class="item">${String(e.message || e)}</div></div>`;
+    }
+    timerEl.textContent = '00:00';
+    statusEl.textContent = 'Aula encerrada.';
+    startBtn.disabled = false;
+  };
+}
+startBtn.addEventListener('click', startRecording);
+stopBtn.addEventListener('click', stopRecording);
+</script>
+</body>
+</html>
