@@ -32,7 +32,7 @@
     }
 
     .wrap{
-      max-width:950px;
+      max-width:1100px;
       margin:0 auto;
       padding:20px 16px 40px;
     }
@@ -339,6 +339,40 @@
       margin-right:6px;
       margin-bottom:6px;
     }
+
+    .dashboard-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:16px;
+      margin-top:16px;
+    }
+
+    @media(max-width:800px){
+      .dashboard-grid{grid-template-columns:1fr}
+    }
+
+    .chart-card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      background:var(--panel-soft);
+    }
+
+    .chart-title{
+      font-size:14px;
+      font-weight:700;
+      margin-bottom:8px;
+      color:var(--text);
+    }
+
+    canvas{
+      width:100%;
+      height:240px;
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:12px;
+      display:block;
+    }
   </style>
 </head>
 <body>
@@ -410,6 +444,14 @@
       return new Date(isoString).toLocaleString("pt-BR");
     } catch {
       return isoString || "";
+    }
+  }
+
+  function formatShortDate(isoString) {
+    try {
+      return new Date(isoString).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    } catch {
+      return "";
     }
   }
 
@@ -706,7 +748,7 @@
           min="1"
           max="10"
           value="${value}"
-          id="sl-${id}"
+          id="${id}"
           oninput="
             document.getElementById('lb-${id}').innerText=this.value;
             this.style.background=(this.value<=3?'#ef4444':(this.value<=7?'#eab308':'#22c55e'));
@@ -716,9 +758,9 @@
     `;
   }
 
-  function applyRangeColors(prefix = "sl-") {
-    ["preparacao","motivacao","fisico","mental","infraestrutura","satisfacao"].forEach((id) => {
-      const el = document.getElementById(prefix + id);
+  function applyRangeColors(ids) {
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
       if (!el) return;
       const v = Number(el.value || 5);
       el.style.background = v <= 3 ? "#ef4444" : (v <= 7 ? "#eab308" : "#22c55e");
@@ -734,23 +776,196 @@
     return tags;
   }
 
-  async function saveSelfEvaluation(recordId, prefix = "sl-") {
+  async function saveSelfEvaluation(recordId, idsMap) {
     const current = await getRecord(recordId);
     if (!current) return;
 
     current.socio = {
-      preparacao: Number(document.getElementById(prefix + "preparacao").value),
-      motivacao: Number(document.getElementById(prefix + "motivacao").value),
-      fisico: Number(document.getElementById(prefix + "fisico").value),
-      mental: Number(document.getElementById(prefix + "mental").value),
-      infraestrutura: Number(document.getElementById(prefix + "infraestrutura").value),
-      satisfacao: Number(document.getElementById(prefix + "satisfacao").value),
+      preparacao: Number(document.getElementById(idsMap.preparacao).value),
+      motivacao: Number(document.getElementById(idsMap.motivacao).value),
+      fisico: Number(document.getElementById(idsMap.fisico).value),
+      mental: Number(document.getElementById(idsMap.mental).value),
+      infraestrutura: Number(document.getElementById(idsMap.infraestrutura).value),
+      satisfacao: Number(document.getElementById(idsMap.satisfacao).value),
     };
     current.socioSaved = true;
 
     await putRecord(current);
     await renderHistory();
     alert("Autoavaliação salva.");
+  }
+
+  function drawDashboardChart(canvasId, values, labels, title) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const parentWidth = canvas.parentElement.clientWidth || 400;
+    canvas.width = parentWidth * 2;
+    canvas.height = 240 * 2;
+    const ctx = canvas.getContext("2d");
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.fillStyle = "#1f2937";
+    ctx.font = "bold 28px Arial";
+    ctx.fillText(title, 28, 36);
+
+    if (!values.length) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px Arial";
+      ctx.fillText("Sem dados ainda", 28, 110);
+      return;
+    }
+
+    const margin = { top: 60, right: 40, bottom: 70, left: 40 };
+    const chartW = W - margin.left - margin.right;
+    const chartH = H - margin.top - margin.bottom;
+
+    ctx.strokeStyle = "rgba(148,163,184,.12)";
+    ctx.lineWidth = 1;
+
+    const guideYs = [0.25, 0.5, 0.75];
+    guideYs.forEach((g) => {
+      const y = margin.top + chartH * g;
+      ctx.beginPath();
+      ctx.moveTo(margin.left, y);
+      ctx.lineTo(W - margin.right, y);
+      ctx.stroke();
+    });
+
+    const slotW = chartW / values.length;
+    const barW = Math.max(24, slotW * 0.46);
+
+    let sum = 0;
+    const medias = values.map((v, i) => {
+      sum += v;
+      return sum / (i + 1);
+    });
+
+    values.forEach((v, i) => {
+      const x = margin.left + i * slotW + (slotW - barW) / 2;
+      const barH = (v / 10) * chartH;
+      const y = margin.top + chartH - barH;
+
+      ctx.fillStyle = "#c8dff0";
+      ctx.fillRect(x, y, barW, barH);
+
+      ctx.fillStyle = "#64748b";
+      ctx.font = "18px Arial";
+      ctx.save();
+      ctx.translate(x + barW / 2, H - 18);
+      ctx.rotate(-0.45);
+      ctx.fillText(labels[i], 0, 0);
+      ctx.restore();
+    });
+
+    ctx.strokeStyle = "#ef8b6c";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    medias.forEach((m, i) => {
+      const x = margin.left + i * slotW + slotW / 2;
+      const y = margin.top + chartH - (m / 10) * chartH;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    const lx = W - 120;
+    const ly = 52;
+    ctx.strokeStyle = "#ef8b6c";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(lx, ly);
+    ctx.lineTo(lx + 36, ly);
+    ctx.stroke();
+    ctx.fillStyle = "#ef8b6c";
+    ctx.font = "20px Arial";
+    ctx.fillText("Média", lx + 46, ly + 7);
+  }
+
+  function renderDashboard(records) {
+    const analyzedWithEval = records.filter(r => r.analysisStatus === "analyzed" && r.socioSaved);
+
+    return `
+      <div class="card">
+        <div class="top-line">
+          <strong>Dashboard</strong>
+          <span class="small">${analyzedWithEval.length} registro(s) com autoavaliação</span>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="chart-card">
+            <div class="chart-title">Minha preparação prévia</div>
+            <canvas id="chartPreparacao"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Minha motivação prévia</div>
+            <canvas id="chartMotivacao"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Meu estado físico na gravação</div>
+            <canvas id="chartFisico"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Meu estado mental/emocional na gravação</div>
+            <canvas id="chartMental"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Infraestrutura funcionando na gravação</div>
+            <canvas id="chartInfraestrutura"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Minha satisfação final</div>
+            <canvas id="chartSatisfacao"></canvas>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function paintDashboard(records) {
+    const analyzedWithEval = records.filter(r => r.analysisStatus === "analyzed" && r.socioSaved);
+    const labels = analyzedWithEval.map(r => formatShortDate(r.createdAt));
+
+    drawDashboardChart(
+      "chartPreparacao",
+      analyzedWithEval.map(r => Number(r.socio?.preparacao ?? 0)),
+      labels,
+      ""
+    );
+    drawDashboardChart(
+      "chartMotivacao",
+      analyzedWithEval.map(r => Number(r.socio?.motivacao ?? 0)),
+      labels,
+      ""
+    );
+    drawDashboardChart(
+      "chartFisico",
+      analyzedWithEval.map(r => Number(r.socio?.fisico ?? 0)),
+      labels,
+      ""
+    );
+    drawDashboardChart(
+      "chartMental",
+      analyzedWithEval.map(r => Number(r.socio?.mental ?? 0)),
+      labels,
+      ""
+    );
+    drawDashboardChart(
+      "chartInfraestrutura",
+      analyzedWithEval.map(r => Number(r.socio?.infraestrutura ?? 0)),
+      labels,
+      ""
+    );
+    drawDashboardChart(
+      "chartSatisfacao",
+      analyzedWithEval.map(r => Number(r.socio?.satisfacao ?? 0)),
+      labels,
+      ""
+    );
   }
 
   function renderAnalysis(record) {
@@ -780,12 +995,12 @@
       <div class="card">
         <strong>Sua autoavaliação</strong>
         <div style="margin-top:12px;">
-          ${renderSlider("Minha preparação prévia", "preparacao", record.socio?.preparacao ?? 5)}
-          ${renderSlider("Minha motivação prévia", "motivacao", record.socio?.motivacao ?? 5)}
-          ${renderSlider("Meu estado físico na gravação", "fisico", record.socio?.fisico ?? 5)}
-          ${renderSlider("Meu estado mental/emocional na gravação", "mental", record.socio?.mental ?? 5)}
-          ${renderSlider("Infraestrutura funcionando na gravação", "infraestrutura", record.socio?.infraestrutura ?? 5)}
-          ${renderSlider("Minha satisfação final", "satisfacao", record.socio?.satisfacao ?? 5)}
+          ${renderSlider("Minha preparação prévia", "cur-preparacao", record.socio?.preparacao ?? 5)}
+          ${renderSlider("Minha motivação prévia", "cur-motivacao", record.socio?.motivacao ?? 5)}
+          ${renderSlider("Meu estado físico na gravação", "cur-fisico", record.socio?.fisico ?? 5)}
+          ${renderSlider("Meu estado mental/emocional na gravação", "cur-mental", record.socio?.mental ?? 5)}
+          ${renderSlider("Infraestrutura funcionando na gravação", "cur-infraestrutura", record.socio?.infraestrutura ?? 5)}
+          ${renderSlider("Minha satisfação final", "cur-satisfacao", record.socio?.satisfacao ?? 5)}
         </div>
         <div class="controls">
           <button class="primary" id="saveEvalBtn">Salvar autoavaliação</button>
@@ -804,101 +1019,34 @@
       </div>
     `;
 
-    applyRangeColors();
+    applyRangeColors([
+      "cur-preparacao",
+      "cur-motivacao",
+      "cur-fisico",
+      "cur-mental",
+      "cur-infraestrutura",
+      "cur-satisfacao"
+    ]);
 
-    document.getElementById("saveEvalBtn").onclick = () => saveSelfEvaluation(record.id, "sl-");
+    document.getElementById("saveEvalBtn").onclick = () => saveSelfEvaluation(record.id, {
+      preparacao: "cur-preparacao",
+      motivacao: "cur-motivacao",
+      fisico: "cur-fisico",
+      mental: "cur-mental",
+      infraestrutura: "cur-infraestrutura",
+      satisfacao: "cur-satisfacao"
+    });
+
     document.getElementById("savePdfBtn").onclick = () => generatePdf(record);
     document.getElementById("playCurrentAudioBtn").onclick = () => openAudioPlayer(record.id);
     document.getElementById("deleteAudioBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareAudioBtn").onclick = () => shareRecording(record.id);
   }
 
-  function renderHistoryDetails(record) {
-    return `
-      <div class="card">
-        <div class="top-line">
-          <strong>Registro do histórico</strong>
-          <span class="small">${formatDateTime(record.createdAt)}</span>
-        </div>
-
-        <div style="margin-top:10px;">
-          ${buildTagsFromConfig(record.config).map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}
-        </div>
-
-        <div class="section-title" style="margin-top:14px;">Resumo rápido</div>
-        <div class="gagne-block">${escapeHtml(record.tldr || "Sem resumo disponível.")}</div>
-
-        <strong>Feedback Robert Gagné</strong>
-        <div style="margin-top:12px;">
-          ${(record.gagne || []).map((row, i) => `
-            <div class="gagne-block">
-              <strong>${i + 1}. ${escapeHtml(row.etapa || "")}</strong>
-              <div class="gagne-line"><strong>Evidência:</strong> ${escapeHtml(row.evidencia || "—")}</div>
-              <div class="gagne-line"><strong>Avaliação:</strong> ${escapeHtml(row.avaliacao || "—")}</div>
-              <div class="gagne-line"><strong>Observações:</strong> ${escapeHtml(row.observacao || "—")}</div>
-            </div>
-          `).join("")}
-        </div>
-
-        <div class="card" style="margin-top:16px;">
-          <strong>Sua autoavaliação</strong>
-          <div style="margin-top:12px;">
-            ${renderSlider("Minha preparação prévia", "hist-preparacao", record.socio?.preparacao ?? 5)}
-            ${renderSlider("Minha motivação prévia", "hist-motivacao", record.socio?.motivacao ?? 5)}
-            ${renderSlider("Meu estado físico na gravação", "hist-fisico", record.socio?.fisico ?? 5)}
-            ${renderSlider("Meu estado mental/emocional na gravação", "hist-mental", record.socio?.mental ?? 5)}
-            ${renderSlider("Infraestrutura funcionando na gravação", "hist-infraestrutura", record.socio?.infraestrutura ?? 5)}
-            ${renderSlider("Minha satisfação final", "hist-satisfacao", record.socio?.satisfacao ?? 5)}
-          </div>
-          <div class="controls">
-            <button class="primary" id="saveHistEvalBtn">Salvar autoavaliação</button>
-          </div>
-        </div>
-
-        <div class="controls">
-          <button class="ghost" id="histSavePdfBtn">Salvar PDF</button>
-          <button class="ghost" id="histPlayAudioBtn" ${record.recorded ? "" : "disabled"}>Ouvir gravação</button>
-          <button class="ghost" id="histDeleteAudioBtn" ${record.recorded ? "" : "disabled"}>Deletar gravação</button>
-          <button class="ghost" id="histShareAudioBtn" ${record.recorded ? "" : "disabled"}>Compartilhar gravação</button>
-        </div>
-      </div>
-    `;
-  }
-
   async function openHistoryRecord(recordId) {
     const record = await getRecord(recordId);
     if (!record) return;
-
     renderAnalysis(record);
-    analysisBlock.innerHTML += renderHistoryDetails(record);
-
-    applyRangeColors("sl-");
-    applyRangeColors("hist-");
-
-    document.getElementById("saveHistEvalBtn").onclick = async () => {
-      const current = await getRecord(record.id);
-      if (!current) return;
-
-      current.socio = {
-        preparacao: Number(document.getElementById("hist-preparacao").value),
-        motivacao: Number(document.getElementById("hist-motivacao").value),
-        fisico: Number(document.getElementById("hist-fisico").value),
-        mental: Number(document.getElementById("hist-mental").value),
-        infraestrutura: Number(document.getElementById("hist-infraestrutura").value),
-        satisfacao: Number(document.getElementById("hist-satisfacao").value),
-      };
-      current.socioSaved = true;
-
-      await putRecord(current);
-      await renderHistory();
-      alert("Autoavaliação atualizada.");
-    };
-
-    document.getElementById("histSavePdfBtn").onclick = () => generatePdf(record);
-    document.getElementById("histPlayAudioBtn").onclick = () => openAudioPlayer(record.id);
-    document.getElementById("histDeleteAudioBtn").onclick = () => deleteRecording(record.id);
-    document.getElementById("histShareAudioBtn").onclick = () => shareRecording(record.id);
-
     analysisBlock.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -967,6 +1115,7 @@
     }
 
     historyBlock.innerHTML = `
+      ${renderDashboard(analyzed)}
       <div class="card">
         <div class="top-line">
           <strong>Seu Histórico</strong>
@@ -987,6 +1136,8 @@
         </div>
       </div>
     `;
+
+    paintDashboard(analyzed);
 
     document.querySelectorAll("[data-history-id]").forEach((el) => {
       el.onclick = () => openHistoryRecord(el.getAttribute("data-history-id"));
