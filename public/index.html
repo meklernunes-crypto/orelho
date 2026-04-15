@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ouvidor.IA Premium V2.2</title>
+  <title>Ouvidor.IA Premium V3</title>
   <style>
     :root{
       --bg:#f7f9fc;
@@ -447,10 +447,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-  const STORAGE_KEY = "ouvidor_ia_premium_history_v6";
+  const LEGACY_STORAGE_KEY = "ouvidor_ia_premium_history_v6";
   const CONFIG_KEY = "ouvidor_ia_premium_config_v6";
-  const AUDIO_DB_NAME = "ouvidor_ia_audio_db_v6";
+  const DB_NAME = "ouvidor_ia_app_v3";
+  const DB_VERSION = 1;
+  const RECORDS_STORE = "records";
   const AUDIO_STORE = "audios";
+  const MIGRATION_FLAG = "ouvidor_ia_v3_migrated";
 
   let recorder = null;
   let stream = null;
@@ -476,10 +479,6 @@
   function pad(n){ return String(n).padStart(2,"0"); }
   function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return `${pad(m)}:${pad(s)}`; }
   function escapeHtml(str=""){ return str.replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m])); }
-  function getHistory(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; } }
-  function saveHistory(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr.slice(0, 200))); }
-  function getConfig(){ try { return JSON.parse(localStorage.getItem(CONFIG_KEY) || "{}"); } catch { return {}; } }
-  function saveConfig(obj){ localStorage.setItem(CONFIG_KEY, JSON.stringify(obj)); }
   function avg(arr){ return arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : 0; }
 
   function bytesToMB(bytes = 0) {
@@ -582,6 +581,18 @@
     };
   }
 
+  function getConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(CONFIG_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function saveConfig(obj) {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(obj));
+  }
+
   function openVoiceForInput(inputId) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -600,11 +611,14 @@
     r.start();
   }
 
-  async function openAudioDB() {
+  async function openAppDB() {
     return await new Promise((resolve, reject) => {
-      const req = indexedDB.open(AUDIO_DB_NAME, 1);
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = () => {
         const db = req.result;
+        if (!db.objectStoreNames.contains(RECORDS_STORE)) {
+          db.createObjectStore(RECORDS_STORE, { keyPath: "id" });
+        }
         if (!db.objectStoreNames.contains(AUDIO_STORE)) {
           db.createObjectStore(AUDIO_STORE);
         }
@@ -614,8 +628,38 @@
     });
   }
 
+  async function getAllRecords() {
+    const db = await openAppDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(RECORDS_STORE, "readonly");
+      const req = tx.objectStore(RECORDS_STORE).getAll();
+      req.onsuccess = () => resolve((req.result || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function getRecord(id) {
+    const db = await openAppDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(RECORDS_STORE, "readonly");
+      const req = tx.objectStore(RECORDS_STORE).get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function putRecord(record) {
+    const db = await openAppDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(RECORDS_STORE, "readwrite");
+      tx.objectStore(RECORDS_STORE).put(record);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
   async function saveAudioBlob(id, blob) {
-    const db = await openAudioDB();
+    const db = await openAppDB();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(AUDIO_STORE, "readwrite");
       tx.objectStore(AUDIO_STORE).put(blob, id);
@@ -625,7 +669,7 @@
   }
 
   async function getAudioBlob(id) {
-    const db = await openAudioDB();
+    const db = await openAppDB();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(AUDIO_STORE, "readonly");
       const req = tx.objectStore(AUDIO_STORE).get(id);
@@ -635,7 +679,7 @@
   }
 
   async function deleteAudioBlob(id) {
-    const db = await openAudioDB();
+    const db = await openAppDB();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(AUDIO_STORE, "readwrite");
       tx.objectStore(AUDIO_STORE).delete(id);
@@ -655,12 +699,32 @@
     audio.play();
   }
 
-  async function analyzeRecord(recordId) {
-    const history = getHistory();
-    const idx = history.findIndex(x => x.id === recordId);
-    if (idx < 0) return;
+  async function migrateLegacyHistoryIfNeeded() {
+    if (localStorage.getItem(MIGRATION_FLAG) === "1") return;
 
-    const record = history[idx];
+    let legacy = [];
+    try {
+      legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || "[]");
+    } catch {
+      legacy = [];
+    }
+
+    if (legacy.length) {
+      for (const item of legacy) {
+        const existing = await getRecord(item.id);
+        if (!existing) {
+          await putRecord(item);
+        }
+      }
+    }
+
+    localStorage.setItem(MIGRATION_FLAG, "1");
+  }
+
+  async function analyzeRecord(recordId) {
+    const record = await getRecord(recordId);
+    if (!record) return;
+
     const blob = await getAudioBlob(record.id);
 
     if (!blob) {
@@ -698,17 +762,17 @@
       };
     }
 
-    history[idx].transcript = data.transcript || "";
-    history[idx].tldr = data.tldr || "";
-    history[idx].gagne = data.gagne || [];
-    history[idx].analysisStatus = data.error ? "failed" : "analyzed";
-    history[idx].analyzedAt = new Date().toISOString();
+    record.transcript = data.transcript || "";
+    record.tldr = data.tldr || "";
+    record.gagne = data.gagne || [];
+    record.analysisStatus = data.error ? "failed" : "analyzed";
+    record.analyzedAt = new Date().toISOString();
 
-    saveHistory(history);
+    await putRecord(record);
     updateConnectionBanner();
     renderSessionAction(null);
-    renderRecent(history[idx]);
-    renderHistory();
+    renderRecent(record);
+    await renderHistory();
 
     statusEl.textContent = "Análise concluída.";
   }
@@ -745,8 +809,9 @@
     document.getElementById("analyzeNowBtn").onclick = () => analyzeRecord(record.id);
   }
 
-  function renderPendingButton() {
-    const pending = getHistory().filter(x => x.analysisStatus === "pending");
+  async function renderPendingButton() {
+    const all = await getAllRecords();
+    const pending = all.filter(x => x.analysisStatus === "pending");
     if (!pending.length || !navigator.onLine) {
       pendingAnalyzeBox.innerHTML = "";
       return;
@@ -759,7 +824,7 @@
     `;
 
     document.getElementById("analyzePendingBtn").onclick = async () => {
-      const list = getHistory().filter(x => x.analysisStatus === "pending");
+      const list = (await getAllRecords()).filter(x => x.analysisStatus === "pending");
       for (const item of list) {
         await analyzeRecord(item.id);
       }
@@ -791,20 +856,16 @@
   }
 
   async function deleteRecordingForRecord(recordId) {
-    const history = getHistory();
-    const idx = history.findIndex(x => x.id === recordId);
-    if (idx < 0) return;
-
-    const item = history[idx];
-    if (!item.recorded) return;
+    const item = await getRecord(recordId);
+    if (!item || !item.recorded) return;
 
     await deleteAudioBlob(recordId);
-    history[idx].recorded = false;
-    history[idx].audioSizeBytes = 0;
-    saveHistory(history);
+    item.recorded = false;
+    item.audioSizeBytes = 0;
+    await putRecord(item);
 
-    renderRecent(history[idx]);
-    renderHistory();
+    renderRecent(item);
+    await renderHistory();
     alert("Gravação apagada.");
   }
 
@@ -1002,40 +1063,38 @@
     document.getElementById("savePdfBtn").onclick = () => generatePdf(record);
     document.getElementById("deleteAudioBtn").onclick = () => deleteRecordingForRecord(record.id);
 
-    document.getElementById("saveAfterBtn").onclick = () => {
-      const history = getHistory();
-      const idx = history.findIndex(x => x.id === record.id);
-      if (idx < 0) return;
-
-      history[idx].config = {
-        localInstitution: document.getElementById("postLocalInstitution").value.trim(),
-        yearLevel: document.getElementById("postYearLevel").value.trim(),
-        courseId: document.getElementById("postCourseId").value.trim(),
-        classId: document.getElementById("postClassId").value.trim(),
-        subject: document.getElementById("postSubject").value.trim(),
-        topicObjective: document.getElementById("postTopicObjective").value.trim(),
-        specificStudents: document.getElementById("postSpecificStudents").value.trim(),
-        durationMinutes: document.getElementById("postDurationMinutes").value.trim()
+    document.getElementById("saveAfterBtn").onclick = async () => {
+      const updated = {
+        ...record,
+        config: {
+          localInstitution: document.getElementById("postLocalInstitution").value.trim(),
+          yearLevel: document.getElementById("postYearLevel").value.trim(),
+          courseId: document.getElementById("postCourseId").value.trim(),
+          classId: document.getElementById("postClassId").value.trim(),
+          subject: document.getElementById("postSubject").value.trim(),
+          topicObjective: document.getElementById("postTopicObjective").value.trim(),
+          specificStudents: document.getElementById("postSpecificStudents").value.trim(),
+          durationMinutes: document.getElementById("postDurationMinutes").value.trim()
+        },
+        socio: {
+          motivacao: Number(document.getElementById("sl-motivacao").value),
+          satisfacao: Number(document.getElementById("sl-satisfacao").value),
+          fisico: Number(document.getElementById("sl-fisico").value),
+          mental: Number(document.getElementById("sl-mental").value),
+          infraestrutura: Number(document.getElementById("sl-infraestrutura").value),
+        }
       };
 
-      history[idx].socio = {
-        motivacao: Number(document.getElementById("sl-motivacao").value),
-        satisfacao: Number(document.getElementById("sl-satisfacao").value),
-        fisico: Number(document.getElementById("sl-fisico").value),
-        mental: Number(document.getElementById("sl-mental").value),
-        infraestrutura: Number(document.getElementById("sl-infraestrutura").value),
-      };
-
-      saveHistory(history);
-      saveConfig(history[idx].config);
+      await putRecord(updated);
+      saveConfig(updated.config);
       renderSavedConfigPreview();
-      renderHistory();
+      await renderHistory();
       alert("Dados da aula salvos.");
     };
   }
 
-  function renderHistory() {
-    const history = getHistory().filter(x => x.analysisStatus === "analyzed");
+  async function renderHistory() {
+    const history = (await getAllRecords()).filter(x => x.analysisStatus === "analyzed");
     historyBlock.classList.remove("hidden");
 
     if (!history.length) {
@@ -1129,6 +1188,10 @@
         wireHistory();
       }
     };
+  }
+
+  function uniqueValues(arr, key) {
+    return [...new Set(arr.map(x => x.config?.[key]).filter(Boolean))];
   }
 
   function renderFilterSelect(id, label, values) {
@@ -1235,8 +1298,8 @@
     });
   }
 
-  function filteredHistory(filters) {
-    const history = getHistory().filter(x => x.analysisStatus === "analyzed");
+  async function filteredHistory(filters) {
+    const history = (await getAllRecords()).filter(x => x.analysisStatus === "analyzed");
     return history.filter((item) => {
       const cfg = item.config || {};
       if (filters.localInstitution && cfg.localInstitution !== filters.localInstitution) return false;
@@ -1251,7 +1314,7 @@
   }
 
   function wireHistory() {
-    const update = () => {
+    const update = async () => {
       const filters = {
         localInstitution: document.getElementById("fLocalInstitution").value,
         yearLevel: document.getElementById("fYearLevel").value,
@@ -1262,7 +1325,7 @@
         specificStudents: document.getElementById("fSpecificStudents").value,
       };
 
-      const items = filteredHistory(filters);
+      const items = await filteredHistory(filters);
 
       drawBarLineChart("chartMotivacao", items.map(x => Number(x.socio?.motivacao || 0)));
       drawBarLineChart("chartSatisfacao", items.map(x => Number(x.socio?.satisfacao || 0)));
@@ -1307,10 +1370,9 @@
     update();
   }
 
-  function openHistoryRecord(id) {
-    const history = getHistory().filter(x => x.analysisStatus === "analyzed");
-    const record = history.find(x => x.id === id);
-    if (!record) return;
+  async function openHistoryRecord(id) {
+    const record = await getRecord(id);
+    if (!record || record.analysisStatus !== "analyzed") return;
 
     const target = document.getElementById("historyLessonDetail");
     if (!target) return;
@@ -1352,250 +1414,6 @@
     };
 
     target.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  async function deleteRecordingForRecord(recordId) {
-    const history = getHistory();
-    const idx = history.findIndex(x => x.id === recordId);
-    if (idx < 0) return;
-
-    const item = history[idx];
-    if (!item.recorded) return;
-
-    await deleteAudioBlob(recordId);
-    history[idx].recorded = false;
-    history[idx].audioSizeBytes = 0;
-    saveHistory(history);
-
-    renderRecent(history[idx]);
-    renderHistory();
-    alert("Gravação apagada.");
-  }
-
-  function generatePdf(record) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const baseName = buildBaseName(record);
-    const fileName = `${baseName}__analise.pdf`;
-
-    let y = 20;
-    const lineHeight = 7;
-    const pageWidth = 180;
-
-    function addWrapped(text, bold = false) {
-      doc.setFont("helvetica", bold ? "bold" : "normal");
-      const lines = doc.splitTextToSize(text, pageWidth);
-      doc.text(lines, 15, y);
-      y += lines.length * lineHeight + 2;
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-    }
-
-    doc.setFontSize(16);
-    addWrapped("Relatório de análise da aula", true);
-    doc.setFontSize(11);
-
-    addWrapped(`Data do sistema: ${new Date(record.createdAt).toLocaleString("pt-BR")}`);
-    addWrapped(`Local/Instituição: ${record.config.localInstitution || "Não informado"}`);
-    addWrapped(`Ano/Semestre Letivo; Ciclo; Módulo: ${record.config.yearLevel || "Não informado"}`);
-    addWrapped(`Identificação do Curso: ${record.config.courseId || "Não informado"}`);
-    addWrapped(`Identificação da Turma: ${record.config.classId || "Não informado"}`);
-    addWrapped(`Disciplina: ${record.config.subject || "Não informado"}`);
-    addWrapped(`Tema/Objetivo do Encontro: ${record.config.topicObjective || "Não informado"}`);
-    addWrapped(`Aluno(s) Específico(s): ${record.config.specificStudents || "Não informado"}`);
-    addWrapped(`Duração prevista do encontro: ${record.config.durationMinutes || "Não informado"}`);
-    addWrapped(`Resumo rápido: ${record.tldr || "Sem resumo."}`);
-
-    addWrapped("Feedback — Padrão Robert Gagné", true);
-
-    (record.gagne || []).forEach((row, i) => {
-      addWrapped(`${i + 1}. ${row.etapa}`, true);
-      addWrapped(`Evidência: ${row.evidencia || "—"}`);
-      addWrapped(`Avaliação: ${row.avaliacao || "—"}`);
-      addWrapped(`Observações: ${row.observacao || "—"}`);
-    });
-
-    addWrapped("Sua auto-avaliação", true);
-    addWrapped(`Motivação prévia: ${record.socio?.motivacao ?? "-"}`);
-    addWrapped(`Satisfação final: ${record.socio?.satisfacao ?? "-"}`);
-    addWrapped(`Estado físico: ${record.socio?.fisico ?? "-"}`);
-    addWrapped(`Estado Emocional/Mental: ${record.socio?.mental ?? "-"}`);
-    addWrapped(`Infraestrutura funcionando: ${record.socio?.infraestrutura ?? "-"}`);
-
-    doc.save(fileName);
-  }
-
-  function renderRecent(record) {
-    resultBlock.classList.remove("hidden");
-    const audioSizeLabel = record.recorded ? `${bytesToMB(record.audioSizeBytes || 0)} MB` : "sem gravação salva";
-
-    resultBlock.innerHTML = `
-      <div class="card">
-        <h2>Análise da aula</h2>
-        <div class="small">${new Date(record.createdAt).toLocaleString("pt-BR")}</div>
-      </div>
-
-      <div class="card">
-        <div class="section-title">Resumo rápido da aula</div>
-        <div class="item">${escapeHtml(record.tldr || "Sem resumo.")}</div>
-      </div>
-
-      <div class="card">
-        <h3>Feedback — Padrão Robert Gagné</h3>
-        ${renderGagneBlocks(record.gagne || [])}
-      </div>
-
-      <div class="card">
-        <div class="top-line">
-          <strong>Refinar dados da aula (opcional)</strong>
-          <button id="toggleRefineBtn" class="ghost">Mostrar / ocultar</button>
-        </div>
-
-        <div id="refineBlock" class="hidden">
-          <div class="small" style="margin-top:12px;">Digite ou grave os detalhes da aula. Informações opcionais.</div>
-
-          <div class="field-grid">
-            <div class="field">
-              <label>Local/Instituição</label>
-              <div class="input-row">
-                <input id="postLocalInstitution" placeholder="Ex.: Colégio Super" value="${escapeHtml(record.config.localInstitution || "")}" />
-                <button class="ghost mic-btn" data-voice="postLocalInstitution">🎤</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Ano/Semestre Letivo; Ciclo; Módulo</label>
-              <div class="input-row">
-                <input id="postYearLevel" placeholder="Ex.: 9º Ano Fund1 / 3º Ano Graduação / Infantil 3" value="${escapeHtml(record.config.yearLevel || "")}" />
-                <button class="ghost mic-btn" data-voice="postYearLevel">🎤</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Identificação do Curso</label>
-              <div class="input-row">
-                <input id="postCourseId" placeholder="Ex.: Ensino Médio / Graduação em Administração" value="${escapeHtml(record.config.courseId || "")}" />
-                <button class="ghost mic-btn" data-voice="postCourseId">🎤</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Identificação da Turma</label>
-              <div class="input-row">
-                <input id="postClassId" placeholder="Ex.: 3B" value="${escapeHtml(record.config.classId || "")}" />
-                <button class="ghost mic-btn" data-voice="postClassId">🎤</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Disciplina</label>
-              <div class="input-row">
-                <input id="postSubject" placeholder="Ex.: Matemática" value="${escapeHtml(record.config.subject || "")}" />
-                <button class="ghost mic-btn" data-voice="postSubject">🎤</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Tema/Objetivo do Encontro</label>
-              <div class="input-row">
-                <input id="postTopicObjective" placeholder="Ex.: Aula Reforço Teorema de Pitágoras" value="${escapeHtml(record.config.topicObjective || "")}" />
-                <button class="ghost mic-btn" data-voice="postTopicObjective">🎤</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Aluno(s) Específico(s)</label>
-              <div class="input-row">
-                <input id="postSpecificStudents" placeholder="Ex.: João Pedro e Maria Izadora" value="${escapeHtml(record.config.specificStudents || "")}" />
-                <button class="ghost mic-btn" data-voice="postSpecificStudents">🎤</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Duração do encontro (minutos)</label>
-              <div class="input-row">
-                <input id="postDurationMinutes" placeholder="Ex.: 45 minutos" value="${escapeHtml(record.config.durationMinutes || "")}" />
-                <button class="ghost mic-btn" data-voice="postDurationMinutes">🎤</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Sua auto-avaliação</h3>
-        ${renderSlider("Motivação prévia", "motivacao", record.socio.motivacao)}
-        ${renderSlider("Satisfação final", "satisfacao", record.socio.satisfacao)}
-        ${renderSlider("Estado físico", "fisico", record.socio.fisico)}
-        ${renderSlider("Estado Emocional/Mental", "mental", record.socio.mental)}
-        ${renderSlider("Infraestrutura funcionando", "infraestrutura", record.socio.infraestrutura)}
-      </div>
-
-      <div class="card">
-        <div class="top-line">
-          <strong>Arquivos e ações</strong>
-        </div>
-        <div class="small" style="margin:10px 0 14px;">Arquivo de gravação: ${audioSizeLabel}</div>
-        <div class="controls">
-          <button class="ghost" id="playCurrentAudioBtn" ${record.recorded ? "" : "disabled"}>▶ Ouvir gravação</button>
-          <button class="ghost" id="savePdfBtn">Salvar PDF da análise</button>
-          <button class="ghost" id="deleteAudioBtn" ${record.recorded ? "" : "disabled"}>Apagar gravação (${audioSizeLabel})</button>
-          <button class="ghost" id="saveAfterBtn">Salvar ajustes</button>
-        </div>
-      </div>
-    `;
-
-    setTimeout(() => {
-      ["motivacao","satisfacao","fisico","mental","infraestrutura"].forEach(id => {
-        const el = document.getElementById("sl-" + id);
-        if (el) applyRangeColor(el);
-      });
-    }, 0);
-
-    document.getElementById("toggleRefineBtn").onclick = () => {
-      document.getElementById("refineBlock").classList.toggle("hidden");
-    };
-
-    document.querySelectorAll('[data-voice]').forEach(btn => {
-      btn.onclick = () => openVoiceForInput(btn.getAttribute("data-voice"));
-    });
-
-    document.getElementById("playCurrentAudioBtn").onclick = () => playAudio(record.id);
-    document.getElementById("savePdfBtn").onclick = () => generatePdf(record);
-    document.getElementById("deleteAudioBtn").onclick = () => deleteRecordingForRecord(record.id);
-
-    document.getElementById("saveAfterBtn").onclick = () => {
-      const history = getHistory();
-      const idx = history.findIndex(x => x.id === record.id);
-      if (idx < 0) return;
-
-      history[idx].config = {
-        localInstitution: document.getElementById("postLocalInstitution").value.trim(),
-        yearLevel: document.getElementById("postYearLevel").value.trim(),
-        courseId: document.getElementById("postCourseId").value.trim(),
-        classId: document.getElementById("postClassId").value.trim(),
-        subject: document.getElementById("postSubject").value.trim(),
-        topicObjective: document.getElementById("postTopicObjective").value.trim(),
-        specificStudents: document.getElementById("postSpecificStudents").value.trim(),
-        durationMinutes: document.getElementById("postDurationMinutes").value.trim()
-      };
-
-      history[idx].socio = {
-        motivacao: Number(document.getElementById("sl-motivacao").value),
-        satisfacao: Number(document.getElementById("sl-satisfacao").value),
-        fisico: Number(document.getElementById("sl-fisico").value),
-        mental: Number(document.getElementById("sl-mental").value),
-        infraestrutura: Number(document.getElementById("sl-infraestrutura").value),
-      };
-
-      saveHistory(history);
-      saveConfig(history[idx].config);
-      renderSavedConfigPreview();
-      renderHistory();
-      alert("Dados da aula salvos.");
-    };
   }
 
   async function startRecording() {
@@ -1665,13 +1483,10 @@
       };
 
       await saveAudioBlob(record.id, blob);
-
-      const history = getHistory();
-      history.unshift(record);
-      saveHistory(history);
+      await putRecord(record);
 
       renderSessionAction(record);
-      renderHistory();
+      await renderHistory();
       updateConnectionBanner();
 
       timerEl.textContent = "00:00";
@@ -1705,10 +1520,15 @@
   startBtn.onclick = startRecording;
   stopBtn.onclick = stopRecording;
 
-  loadConfigIntoFields("cfg");
-  renderSavedConfigPreview();
-  renderHistory();
-  updateConnectionBanner();
+  async function init() {
+    await migrateLegacyHistoryIfNeeded();
+    loadConfigIntoFields("cfg");
+    renderSavedConfigPreview();
+    await renderHistory();
+    updateConnectionBanner();
+  }
+
+  init();
 </script>
 </body>
 </html>
