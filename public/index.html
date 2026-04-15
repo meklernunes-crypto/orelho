@@ -13,31 +13,24 @@
       --text:#163243;
       --muted:#6b7280;
       --blue:#1f6a8a;
-      --blue-strong:#14536d;
       --orange:#ef8b6c;
-      --red:#dc2626;
-      --green:#16a34a;
-      --yellow:#d97706;
       --border:#dbe3ef;
       --shadow:0 10px 26px rgba(15,23,42,.06);
       --radius:20px;
     }
 
     *{box-sizing:border-box}
-
     body{
       margin:0;
       font-family:Arial,sans-serif;
       background:var(--bg);
       color:var(--text);
     }
-
     .wrap{
-      max-width:1100px;
+      max-width:900px;
       margin:0 auto;
       padding:20px 16px 40px;
     }
-
     .card{
       background:var(--panel);
       border:1px solid var(--border);
@@ -46,32 +39,22 @@
       margin-bottom:16px;
       box-shadow:var(--shadow);
     }
-
     .hero{
       text-align:center;
       padding:26px 18px 20px;
     }
-
     .brand-logo{
       width:220px;
       max-width:75%;
       display:block;
       margin:0 auto 10px;
     }
-
-    .hero p{
-      margin:0;
-      color:var(--muted);
-      line-height:1.5;
-    }
-
     .welcome{
       font-size:18px;
       font-weight:700;
       margin:12px 0 6px;
-      color:var(--blue-strong);
+      color:var(--blue);
     }
-
     .controls{
       display:flex;
       gap:12px;
@@ -79,7 +62,6 @@
       flex-wrap:wrap;
       margin-top:18px;
     }
-
     button{
       border:none;
       border-radius:14px;
@@ -87,12 +69,8 @@
       font-size:15px;
       font-weight:700;
       cursor:pointer;
-      transition:.15s ease;
     }
-
-    button:hover{transform:translateY(-1px)}
-    button:disabled{opacity:.55;cursor:not-allowed;transform:none}
-
+    button:disabled{opacity:.55;cursor:not-allowed}
     .primary{background:var(--blue);color:#fff}
     .danger{background:var(--orange);color:#fff}
     .ghost{
@@ -100,61 +78,72 @@
       color:var(--text);
       border:1px solid var(--border);
     }
-
     .metric{
       font-size:44px;
       font-weight:800;
       margin-top:14px;
       letter-spacing:-.02em;
     }
-
     .muted,.small{
       color:var(--muted);
       line-height:1.45;
     }
-
     .small{font-size:12px}
-
-    .connection-inline{
-      margin-top:10px;
-      font-size:13px;
-      color:var(--muted);
-    }
-
     .status-live{
       margin-top:8px;
       font-size:15px;
       font-weight:700;
-      color:var(--blue-strong);
+      color:var(--blue);
     }
-
+    .section-title{
+      font-size:13px;
+      font-weight:700;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      margin-bottom:8px;
+    }
     .hidden{display:none}
-
+    .action-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+      margin-top:8px;
+    }
+    @media(max-width:700px){
+      .action-grid{grid-template-columns:1fr}
+    }
+    .action-card{
+      border:1px solid var(--border);
+      background:var(--panel-soft);
+      border-radius:16px;
+      padding:14px;
+    }
+    .action-card button{
+      width:100%;
+      margin-bottom:8px;
+    }
     .field-grid{
       display:grid;
       grid-template-columns:repeat(2,1fr);
       gap:12px;
       margin-top:14px;
     }
-
     @media(max-width:850px){
       .field-grid{grid-template-columns:1fr}
     }
-
     .field label{
       display:block;
       margin-bottom:6px;
       font-weight:700;
       font-size:14px;
     }
-
     .input-row{
       display:flex;
       gap:8px;
       align-items:center;
     }
-
-    input, textarea, select{
+    input, textarea{
       width:100%;
       padding:12px 14px;
       border-radius:14px;
@@ -164,16 +153,6 @@
       outline:none;
       font-size:14px;
     }
-
-    textarea{
-      min-height:88px;
-      resize:vertical;
-    }
-
-    input::placeholder, textarea::placeholder{
-      color:#9aa5b5;
-    }
-
     .mic-btn{
       min-width:44px;
       width:44px;
@@ -187,168 +166,16 @@
       -webkit-user-select:none;
       touch-action:none;
     }
-
     .voice-help{
       margin-top:8px;
       font-size:12px;
       color:var(--muted);
     }
-
-    .range-wrap{
-      margin-bottom:16px;
-    }
-
-    .range-wrap label{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:8px;
-      font-size:14px;
-      font-weight:700;
-    }
-
-    input[type="range"]{
-      -webkit-appearance:none;
-      appearance:none;
-      height:10px;
-      padding:0;
-      border:none;
-      border-radius:999px;
-      background:#d1d5db;
-    }
-
-    input[type="range"]::-webkit-slider-thumb{
-      -webkit-appearance:none;
-      appearance:none;
-      width:20px;
-      height:20px;
-      border-radius:50%;
-      background:#fff;
-      border:2px solid rgba(0,0,0,.18);
-      box-shadow:0 2px 6px rgba(0,0,0,.12);
-    }
-
-    input[type="range"]::-moz-range-thumb{
-      width:20px;
-      height:20px;
-      border-radius:50%;
-      background:#fff;
-      border:2px solid rgba(0,0,0,.18);
-      box-shadow:0 2px 6px rgba(0,0,0,.12);
-    }
-
-    .top-line{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-
-    .gagne-block{
-      border:1px solid var(--border);
-      border-radius:14px;
-      background:var(--panel-soft);
-      padding:14px;
-      margin-bottom:10px;
-    }
-
-    .gagne-block strong{
-      display:block;
-      margin-bottom:8px;
-    }
-
-    .gagne-line{
-      margin-bottom:6px;
-      font-size:14px;
-      line-height:1.45;
-    }
-
-    .action-grid{
-      display:grid;
-      grid-template-columns:repeat(2,1fr);
-      gap:12px;
-      margin-top:8px;
-    }
-
-    @media(max-width:700px){
-      .action-grid{grid-template-columns:1fr}
-    }
-
-    .action-card{
-      border:1px solid var(--border);
-      background:var(--panel-soft);
-      border-radius:16px;
-      padding:14px;
-    }
-
-    .action-card button{
-      width:100%;
-      margin-bottom:8px;
-    }
-
-    .pending-card{
-      border:2px dashed #cbd5e1;
-      background:#f8fafc;
-    }
-
-    .filter-toggle{
-      margin-top:12px;
-    }
-
-    .filter-grid{
-      display:grid;
-      grid-template-columns:repeat(7,1fr);
-      gap:12px;
-      margin-top:16px;
-    }
-
-    @media(max-width:1100px){
-      .filter-grid{grid-template-columns:repeat(3,1fr)}
-    }
-
-    @media(max-width:700px){
-      .filter-grid{grid-template-columns:1fr}
-    }
-
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(12,1fr);
-      gap:16px;
-    }
-
-    .col-12{grid-column:span 12}
-    .col-6{grid-column:span 6}
-
-    @media(max-width:900px){
-      .col-6{grid-column:span 12}
-    }
-
-    .chart-card h3{
-      margin:0 0 10px;
-      font-size:16px;
-    }
-
-    .chart-wrap{
-      width:100%;
-      overflow:hidden;
-    }
-
-    canvas{
-      width:100%;
-      height:250px;
-      background:#fff;
-      border-radius:14px;
-      border:1px solid var(--border);
-      display:block;
-    }
-
     .history-title{
       font-size:15px;
       font-weight:800;
       margin-bottom:6px;
     }
-
     .audio-modal{
       position:fixed;
       inset:0;
@@ -359,7 +186,6 @@
       padding:20px;
       z-index:9999;
     }
-
     .audio-modal-card{
       background:#fff;
       border-radius:18px;
@@ -368,43 +194,11 @@
       width:100%;
       box-shadow:0 18px 48px rgba(15,23,42,.18);
     }
-
-    .audio-progress{
-      width:100%;
-      height:10px;
-      background:#e5e7eb;
-      border-radius:999px;
-      overflow:hidden;
-      margin:14px 0 10px;
-    }
-
-    .audio-progress-bar{
-      height:100%;
-      width:0%;
-      background:var(--blue);
-    }
-
-    .audio-time{
-      display:flex;
-      justify-content:space-between;
-      font-size:12px;
-      color:var(--muted);
-      margin-bottom:14px;
-    }
-
-    .section-title{
-      font-size:13px;
-      font-weight:700;
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.04em;
-      margin-bottom:8px;
-    }
   </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="card hero" id="heroCard">
+  <div class="card hero">
     <img src="orelho-logo.png" alt="Orelho" class="brand-logo" />
     <div class="welcome">Lá vamos nós. Grave, analise, avalie. Estamos juntos</div>
 
@@ -415,7 +209,7 @@
 
     <div id="timer" class="metric">00:00</div>
     <div id="statusLive" class="status-live">Aguardando início</div>
-    <div id="connectionInline" class="connection-inline"></div>
+    <div id="connectionInline" class="small"></div>
   </div>
 
   <div class="card" id="instructionsCard">
@@ -430,27 +224,21 @@
   </div>
 
   <div id="postRecordBlock" class="hidden"></div>
-  <div id="analysisBlock" class="hidden"></div>
-  <div id="historyBlock" class="hidden"></div>
+  <div id="audioModalRoot"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-  const LEGACY_STORAGE_KEY = "ouvidor_ia_premium_history_v6";
   const CONFIG_KEY = "ouvidor_ia_premium_config_v6";
   const DB_NAME = "orelho_app_v3";
   const DB_VERSION = 1;
   const RECORDS_STORE = "records";
   const AUDIO_STORE = "audios";
-  const MIGRATION_FLAG = "orelho_v3_migrated";
-  const SPECIAL_ANALYSIS_LIMIT = 1;
 
   let recorder = null;
   let stream = null;
   let chunks = [];
   let startTime = null;
   let timerInterval = null;
-  let currentAudioController = null;
   let activeVoiceRecognition = null;
 
   const startBtn = document.getElementById("startBtn");
@@ -460,78 +248,20 @@
   const connectionInline = document.getElementById("connectionInline");
   const instructionsCard = document.getElementById("instructionsCard");
   const postRecordBlock = document.getElementById("postRecordBlock");
-  const analysisBlock = document.getElementById("analysisBlock");
-  const historyBlock = document.getElementById("historyBlock");
+  const audioModalRoot = document.getElementById("audioModalRoot");
 
   function pad(n){ return String(n).padStart(2,"0"); }
   function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return `${pad(m)}:${pad(s)}`; }
   function escapeHtml(str=""){ return str.replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m])); }
-  function avg(arr){ return arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : 0; }
 
   function bytesToMB(bytes = 0) {
     return (bytes / (1024 * 1024)).toFixed(2);
   }
 
-  function formatShortDate(iso) {
-    const d = new Date(iso);
-    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-  }
-
-  function normalizePart(value, fallback) {
-    const clean = (value || "")
-      .toString()
-      .trim()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .toLowerCase();
-    return clean || fallback;
-  }
-
-  function buildBaseName(record) {
-    const d = new Date(record.createdAt || Date.now());
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const cfg = record.config || {};
-
-    return [
-      `${yyyy}-${mm}-${dd}`,
-      normalizePart(cfg.localInstitution, "sem-local"),
-      normalizePart(cfg.yearLevel, "sem-ano-letivo"),
-      normalizePart(cfg.courseId, "sem-curso"),
-      normalizePart(cfg.classId, "sem-turma"),
-      normalizePart(cfg.subject, "sem-disciplina"),
-      normalizePart(cfg.topicObjective, "sem-tema")
-    ].join("__");
-  }
-
-  function renderSlider(label, id, value) {
-    return `
-      <div class="range-wrap">
-        <label>
-          <span>${label}</span>
-          <strong id="lb-${id}">${value}</strong>
-        </label>
-        <input
-          type="range"
-          min="1"
-          max="10"
-          value="${value}"
-          id="sl-${id}"
-          oninput="
-            document.getElementById('lb-${id}').innerText=this.value;
-            this.style.background = (this.value <= 3 ? '#ef4444' : (this.value <= 7 ? '#eab308' : '#22c55e'));
-          "
-        />
-      </div>
-    `;
-  }
-
-  function applyRangeColor(el) {
-    const v = Number(el.value || 5);
-    el.style.background = v <= 3 ? "#ef4444" : (v <= 7 ? "#eab308" : "#22c55e");
+  function renderConnectionStatus() {
+    connectionInline.textContent = navigator.onLine
+      ? "Conexão disponível."
+      : "Sem conexão. Você pode gravar agora e analisar depois.";
   }
 
   function getConfig() {
@@ -544,40 +274,6 @@
 
   function saveConfig(obj) {
     localStorage.setItem(CONFIG_KEY, JSON.stringify(obj));
-  }
-
-  function renderConnectionStatus() {
-    connectionInline.textContent = navigator.onLine
-      ? "Conexão disponível."
-      : "Sem conexão. Você pode gravar agora e analisar depois.";
-  }
-
-  function readConfigFromSection(prefix) {
-    return {
-      localInstitution: document.getElementById(prefix + "LocalInstitution")?.value.trim() || "",
-      yearLevel: document.getElementById(prefix + "YearLevel")?.value.trim() || "",
-      courseId: document.getElementById(prefix + "CourseId")?.value.trim() || "",
-      classId: document.getElementById(prefix + "ClassId")?.value.trim() || "",
-      subject: document.getElementById(prefix + "Subject")?.value.trim() || "",
-      topicObjective: document.getElementById(prefix + "TopicObjective")?.value.trim() || "",
-      specificStudents: document.getElementById(prefix + "SpecificStudents")?.value.trim() || "",
-      durationMinutes: document.getElementById(prefix + "DurationMinutes")?.value.trim() || ""
-    };
-  }
-
-  function fillConfigInSection(prefix, cfg = {}) {
-    const set = (id, val) => {
-      const el = document.getElementById(prefix + id);
-      if (el) el.value = val || "";
-    };
-    set("LocalInstitution", cfg.localInstitution);
-    set("YearLevel", cfg.yearLevel);
-    set("CourseId", cfg.courseId);
-    set("ClassId", cfg.classId);
-    set("Subject", cfg.subject);
-    set("TopicObjective", cfg.topicObjective);
-    set("SpecificStudents", cfg.specificStudents);
-    set("DurationMinutes", cfg.durationMinutes);
   }
 
   async function openAppDB() {
@@ -593,26 +289,6 @@
         }
       };
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async function getAllRecords() {
-    const db = await openAppDB();
-    return await new Promise((resolve, reject) => {
-      const tx = db.transaction(RECORDS_STORE, "readonly");
-      const req = tx.objectStore(RECORDS_STORE).getAll();
-      req.onsuccess = () => resolve((req.result || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  async function getRecord(id) {
-    const db = await openAppDB();
-    return await new Promise((resolve, reject) => {
-      const tx = db.transaction(RECORDS_STORE, "readonly");
-      const req = tx.objectStore(RECORDS_STORE).get(id);
-      req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
   }
@@ -640,4 +316,397 @@
   async function getAudioBlob(id) {
     const db = await openAppDB();
     return await new Promise((resolve, reject) => {
-      const tx = db.transaction(AUDIO
+      const tx = db.transaction(AUDIO_STORE, "readonly");
+      const req = tx.objectStore(AUDIO_STORE).get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function deleteAudioBlob(id) {
+    const db = await openAppDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(AUDIO_STORE, "readwrite");
+      tx.objectStore(AUDIO_STORE).delete(id);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  function openVoiceForInput(targetId) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      alert("Seu navegador não oferece gravação por voz neste campo.");
+      return null;
+    }
+
+    const rec = new SR();
+    rec.lang = "pt-BR";
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    rec.onresult = (e) => {
+      const texts = [];
+      for (let i = 0; i < e.results.length; i++) {
+        texts.push(e.results[i][0].transcript);
+      }
+      const el = document.getElementById(targetId);
+      if (el) el.value = texts.join(" ").trim();
+    };
+
+    return rec;
+  }
+
+  function bindHoldToTalk(container = document) {
+    container.querySelectorAll(".mic-hold").forEach((btn) => {
+      const target = btn.dataset.target;
+      if (!target) return;
+
+      const start = (ev) => {
+        ev.preventDefault();
+        if (activeVoiceRecognition) return;
+        const recognition = openVoiceForInput(target);
+        if (!recognition) return;
+        activeVoiceRecognition = recognition;
+        btn.textContent = "🔴";
+        try { recognition.start(); } catch {}
+      };
+
+      const stop = (ev) => {
+        if (ev) ev.preventDefault();
+        if (!activeVoiceRecognition) return;
+        try { activeVoiceRecognition.stop(); } catch {}
+        activeVoiceRecognition = null;
+        btn.textContent = "🎤";
+      };
+
+      btn.onmousedown = start;
+      btn.ontouchstart = start;
+      btn.onmouseup = stop;
+      btn.onmouseleave = stop;
+      btn.ontouchend = stop;
+      btn.ontouchcancel = stop;
+    });
+  }
+
+  async function shareRecording(recordId) {
+    const blob = await getAudioBlob(recordId);
+    if (!blob) {
+      alert("Gravação não encontrada.");
+      return;
+    }
+
+    const file = new File([blob], `${recordId}.webm`, { type: blob.type || "audio/webm" });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "Gravação do Orelho"
+        });
+        return;
+      } catch {}
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${recordId}.webm`;
+    a.click();
+    URL.revokeObjectURL(url);
+    alert("Arquivo baixado para compartilhamento manual.");
+  }
+
+  async function openAudioPlayer(recordId) {
+    const blob = await getAudioBlob(recordId);
+    if (!blob) {
+      alert("Gravação não encontrada.");
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+
+    audioModalRoot.innerHTML = `
+      <div class="audio-modal" id="audioModal">
+        <div class="audio-modal-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <strong>Ouvir gravação</strong>
+            <button class="ghost" id="closeAudioModalBtn">Fechar</button>
+          </div>
+
+          <audio id="nativeAudio" controls style="width:100%;margin-top:14px;"></audio>
+
+          <div class="controls">
+            <button class="ghost" id="pauseAudioBtn">Pause</button>
+            <button class="ghost" id="stopAudioBtn">Stop</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const nativeAudio = document.getElementById("nativeAudio");
+    nativeAudio.src = url;
+    nativeAudio.play();
+
+    const close = () => {
+      nativeAudio.pause();
+      nativeAudio.currentTime = 0;
+      URL.revokeObjectURL(url);
+      audioModalRoot.innerHTML = "";
+    };
+
+    document.getElementById("pauseAudioBtn").onclick = () => nativeAudio.pause();
+    document.getElementById("stopAudioBtn").onclick = () => {
+      nativeAudio.pause();
+      nativeAudio.currentTime = 0;
+    };
+    document.getElementById("closeAudioModalBtn").onclick = close;
+    document.getElementById("audioModal").onclick = (e) => {
+      if (e.target.id === "audioModal") close();
+    };
+  }
+
+  async function deleteRecording(recordId) {
+    const ok = confirm("Deseja realmente deletar esta gravação?");
+    if (!ok) return;
+    await deleteAudioBlob(recordId);
+    postRecordBlock.innerHTML = "";
+    postRecordBlock.classList.add("hidden");
+    alert("Gravação deletada.");
+  }
+
+  function renderPostRecord(record) {
+    instructionsCard.classList.add("hidden");
+    postRecordBlock.classList.remove("hidden");
+
+    const audioSizeLabel = `${bytesToMB(record.audioSizeBytes || 0)} MB`;
+    const cfg = record.config || getConfig();
+
+    postRecordBlock.innerHTML = `
+      <div class="card">
+        <div class="section-title">Gravação encerrada</div>
+
+        <div class="action-grid">
+          <div class="action-card">
+            <button class="primary" id="analyzeBtn">Analisar gravação</button>
+            <div class="small" id="analyzeConnectionNote">${navigator.onLine ? "" : "Sem conexão para analisar."}</div>
+          </div>
+
+          <div class="action-card">
+            <button class="ghost" id="listenBtn">Ouvir gravação</button>
+            <div class="small">Tamanho do arquivo: ${audioSizeLabel}</div>
+          </div>
+
+          <div class="action-card">
+            <button class="ghost" id="deleteBtn">Deletar gravação</button>
+            <div class="small">Remove totalmente o arquivo de áudio.</div>
+          </div>
+
+          <div class="action-card">
+            <button class="ghost" id="shareBtn">Compartilhar gravação</button>
+            <div class="small">${navigator.onLine ? "Compartilhamento disponível." : "Sem conexão para compartilhar."}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Detalhes da gravação (opcional)</strong>
+        <div class="small" style="margin-top:8px;">Digite ou grave os detalhes. Essas informações serão usadas depois.</div>
+        <div class="voice-help">🎤 Segure o botão do microfone para falar.</div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label>Local/Instituição</label>
+            <div class="input-row">
+              <input id="postLocalInstitution" placeholder="Ex.: Colégio Super" />
+              <button class="ghost mic-btn mic-hold" data-target="postLocalInstitution">🎤</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Ano/Semestre Letivo; Ciclo; Módulo</label>
+            <div class="input-row">
+              <input id="postYearLevel" placeholder="Ex.: 9º Ano Fund1 / 3º Ano Graduação / Infantil 3" />
+              <button class="ghost mic-btn mic-hold" data-target="postYearLevel">🎤</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Identificação do Curso</label>
+            <div class="input-row">
+              <input id="postCourseId" placeholder="Ex.: Ensino Médio / Graduação em Administração" />
+              <button class="ghost mic-btn mic-hold" data-target="postCourseId">🎤</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Identificação da Turma</label>
+            <div class="input-row">
+              <input id="postClassId" placeholder="Ex.: 3B" />
+              <button class="ghost mic-btn mic-hold" data-target="postClassId">🎤</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Disciplina</label>
+            <div class="input-row">
+              <input id="postSubject" placeholder="Ex.: Matemática" />
+              <button class="ghost mic-btn mic-hold" data-target="postSubject">🎤</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Tema/Objetivo do Encontro</label>
+            <div class="input-row">
+              <input id="postTopicObjective" placeholder="Ex.: Aula Reforço Teorema de Pitágoras" />
+              <button class="ghost mic-btn mic-hold" data-target="postTopicObjective">🎤</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Aluno(s) Específico(s)</label>
+            <div class="input-row">
+              <input id="postSpecificStudents" placeholder="Ex.: João Pedro e Maria Izadora" />
+              <button class="ghost mic-btn mic-hold" data-target="postSpecificStudents">🎤</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Duração do encontro (minutos)</label>
+            <div class="input-row">
+              <input id="postDurationMinutes" placeholder="Ex.: 45 minutos" />
+              <button class="ghost mic-btn mic-hold" data-target="postDurationMinutes">🎤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val || "";
+    };
+    set("postLocalInstitution", cfg.localInstitution);
+    set("postYearLevel", cfg.yearLevel);
+    set("postCourseId", cfg.courseId);
+    set("postClassId", cfg.classId);
+    set("postSubject", cfg.subject);
+    set("postTopicObjective", cfg.topicObjective);
+    set("postSpecificStudents", cfg.specificStudents);
+    set("postDurationMinutes", cfg.durationMinutes);
+
+    bindHoldToTalk(postRecordBlock);
+
+    document.getElementById("analyzeBtn").onclick = async () => {
+      const note = document.getElementById("analyzeConnectionNote");
+      if (!navigator.onLine) {
+        note.textContent = "Sem conexão para analisar.";
+        return;
+      }
+      note.textContent = "Orelho trabalhando pra você. Pode levar alguns minutos";
+      alert("Fluxo de análise ligado. Primeiro vamos garantir que a gravação funcione.");
+    };
+
+    document.getElementById("listenBtn").onclick = () => openAudioPlayer(record.id);
+    document.getElementById("deleteBtn").onclick = () => deleteRecording(record.id);
+    document.getElementById("shareBtn").onclick = () => shareRecording(record.id);
+  }
+
+  async function startRecording() {
+    chunks = [];
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+    } catch (err) {
+      alert("Não foi possível acessar o microfone. Verifique a permissão do navegador.");
+      return;
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : "audio/webm";
+
+    recorder = new MediaRecorder(stream, { mimeType });
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.start();
+
+    startTime = Date.now();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    statusLive.textContent = "Gravação em andamento";
+
+    timerInterval = setInterval(() => {
+      timerEl.textContent = fmtDuration(Math.floor((Date.now() - startTime) / 1000));
+    }, 500);
+  }
+
+  async function stopRecording() {
+    if (!recorder) return;
+
+    stopBtn.disabled = true;
+    statusLive.textContent = "Gravação encerrada";
+
+    recorder.stop();
+
+    recorder.onstop = async () => {
+      clearInterval(timerInterval);
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+
+      const blob = new Blob(chunks, { type: chunks[0]?.type || "audio/webm" });
+      const cfg = getConfig();
+
+      const record = {
+        id: "gravacao_" + Date.now(),
+        createdAt: new Date().toISOString(),
+        config: cfg,
+        transcript: "",
+        tldr: "",
+        gagne: [],
+        socio: {
+          preparacao: 5,
+          motivacao: 5,
+          fisico: 5,
+          mental: 5,
+          infraestrutura: 5,
+          satisfacao: 5
+        },
+        socioSaved: false,
+        specialAnalysis: null,
+        specialAnalysisCount: 0,
+        recorded: true,
+        audioSizeBytes: blob.size,
+        analysisStatus: navigator.onLine ? "recorded" : "pending"
+      };
+
+      await saveAudioBlob(record.id, blob);
+      await putRecord(record);
+
+      timerEl.textContent = "00:00";
+      startBtn.disabled = false;
+      recorder = null;
+
+      renderPostRecord(record);
+    };
+  }
+
+  startBtn.addEventListener("click", startRecording);
+  stopBtn.addEventListener("click", stopRecording);
+
+  window.addEventListener("online", renderConnectionStatus);
+  window.addEventListener("offline", renderConnectionStatus);
+
+  renderConnectionStatus();
+</script>
+</body>
+</html>
