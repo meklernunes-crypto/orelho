@@ -360,8 +360,8 @@
   const audioModalRoot = document.getElementById("audioModalRoot");
 
   function pad(n){ return String(n).padStart(2,"0"); }
-  function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return \`\${pad(m)}:\${pad(s)}\`; }
-  function escapeHtml(str=""){ return str.replace(/[&<>\"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m])); }
+  function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return `${pad(m)}:${pad(s)}`; }
+  function escapeHtml(str=""){ return str.replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m])); }
   function bytesToMB(bytes = 0) { return (bytes / (1024 * 1024)).toFixed(2); }
 
   function renderConnectionStatus() {
@@ -445,7 +445,8 @@
       tx.onerror = () => reject(tx.error);
     });
   }
-    function openVoiceForInput(targetId) {
+
+  function openVoiceForInput(targetId) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       alert("Seu navegador não oferece gravação por voz neste campo.");
@@ -508,7 +509,7 @@
       return;
     }
 
-    const file = new File([blob], \`\${recordId}.webm\`, { type: blob.type || "audio/webm" });
+    const file = new File([blob], `${recordId}.webm`, { type: blob.type || "audio/webm" });
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
@@ -523,7 +524,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = \`\${recordId}.webm\`;
+    a.download = `${recordId}.webm`;
     a.click();
     URL.revokeObjectURL(url);
     alert("Arquivo baixado para compartilhamento manual.");
@@ -620,15 +621,17 @@
     instructionsCard.classList.add("hidden");
     postRecordBlock.classList.remove("hidden");
 
-    const audioSizeLabel = \`\${bytesToMB(record.audioSizeBytes || 0)} MB\`;
+    const audioSizeLabel = `${bytesToMB(record.audioSizeBytes || 0)} MB`;
     const cfg = record.config || getConfig();
 
     postRecordBlock.innerHTML = `
       <div class="card">
-        <div class="section-title">Gravação encerrada</div>
-
-        <div class="card" style="margin-bottom:14px;background:#fff;">
+        <div class="top-line">
           <strong>Detalhes da gravação (opcional)</strong>
+          <button class="ghost" id="toggleDetailsBtn">Mostrar / ocultar</button>
+        </div>
+
+        <div id="detailsBlock" class="hidden">
           <div class="small" style="margin-top:8px;">Digite ou grave os detalhes. Essas informações serão usadas antes da análise.</div>
           <div class="voice-help">🎤 Segure o botão do microfone para falar.</div>
 
@@ -698,6 +701,10 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Gravação encerrada</div>
 
         <div class="action-grid">
           <div class="action-card">
@@ -726,6 +733,10 @@
     fillConfigFields(cfg);
     bindHoldToTalk(postRecordBlock);
 
+    document.getElementById("toggleDetailsBtn").onclick = () => {
+      document.getElementById("detailsBlock").classList.toggle("hidden");
+    };
+
     document.getElementById("analyzeBtn").onclick = async () => {
       const note = document.getElementById("analyzeConnectionNote");
       const newCfg = readPostConfig();
@@ -747,7 +758,8 @@
     document.getElementById("deleteBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareBtn").onclick = () => shareRecording(record.id);
   }
-    async function startRecording() {
+
+  async function startRecording() {
     chunks = [];
 
     try {
