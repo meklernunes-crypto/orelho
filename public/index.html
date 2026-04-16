@@ -73,6 +73,32 @@
       margin-top:18px;
     }
 
+    .controls-left{
+      display:flex;
+      gap:12px;
+      justify-content:flex-start;
+      flex-wrap:wrap;
+      margin-top:18px;
+    }
+
+    .stack{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .secondary-row{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      margin-top:12px;
+    }
+
+    @media(max-width:700px){
+      .secondary-row{grid-template-columns:1fr}
+    }
+
     button{
       border:none;
       border-radius:14px;
@@ -93,6 +119,14 @@
       background:#fff;
       color:var(--text);
       border:1px solid var(--border);
+    }
+
+    .primary-wide{
+      background:var(--blue);
+      color:#fff;
+      width:100%;
+      padding:16px 18px;
+      font-size:16px;
     }
 
     .metric{
@@ -191,29 +225,6 @@
       color:var(--muted);
     }
 
-    .action-grid{
-      display:grid;
-      grid-template-columns:repeat(2,1fr);
-      gap:12px;
-      margin-top:8px;
-    }
-
-    @media(max-width:700px){
-      .action-grid{grid-template-columns:1fr}
-    }
-
-    .action-card{
-      border:1px solid var(--border);
-      background:var(--panel-soft);
-      border-radius:16px;
-      padding:14px;
-    }
-
-    .action-card button{
-      width:100%;
-      margin-bottom:8px;
-    }
-
     .gagne-block{
       border:1px solid var(--border);
       border-radius:14px;
@@ -233,8 +244,23 @@
       line-height:1.45;
     }
 
+    .range-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:16px;
+      margin-top:12px;
+    }
+
+    @media(max-width:800px){
+      .range-grid{grid-template-columns:1fr}
+    }
+
     .range-wrap{
-      margin-bottom:16px;
+      margin-bottom:6px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:var(--panel-soft);
+      padding:12px;
     }
 
     .range-wrap label{
@@ -500,12 +526,20 @@
     },
   };
 
+  const ANALYSIS_MESSAGES = [
+    "Orelho ouvindo sua aula...",
+    "Organizando ideias...",
+    "Aplicando modelo pedagógico...",
+    "Gerando feedback..."
+  ];
+
   let recorder = null;
   let stream = null;
   let chunks = [];
   let startTime = null;
   let timerInterval = null;
   let activeVoiceRecognition = null;
+  let analysisMessageInterval = null;
 
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
@@ -654,7 +688,8 @@
       tx.onerror = () => reject(tx.error);
     });
   }
-    function openVoiceForInput(targetId) {
+
+  function openVoiceForInput(targetId) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       alert("Seu navegador não oferece gravação por voz neste campo.");
@@ -758,6 +793,27 @@
     }
 
     return { model: "gagne", reason: "Modelo padrão para avaliar estrutura, sequência e lógica da aula." };
+  }
+
+  function startAnalysisLoading(noteEl) {
+    stopAnalysisLoading();
+    let idx = 0;
+    if (noteEl) {
+      noteEl.innerHTML = `<span class="analyzing">${ANALYSIS_MESSAGES[0]}</span>`;
+    }
+    analysisMessageInterval = setInterval(() => {
+      idx = (idx + 1) % ANALYSIS_MESSAGES.length;
+      if (noteEl) {
+        noteEl.innerHTML = `<span class="analyzing">${ANALYSIS_MESSAGES[idx]}</span>`;
+      }
+    }, 1200);
+  }
+
+  function stopAnalysisLoading() {
+    if (analysisMessageInterval) {
+      clearInterval(analysisMessageInterval);
+      analysisMessageInterval = null;
+    }
   }
 
   async function shareRecording(recordId) {
@@ -1053,6 +1109,10 @@
 
     await putRecord(current);
     await renderHistory();
+
+    const refreshed = await getRecord(recordId);
+    if (refreshed) renderAnalysis(refreshed);
+
     alert("Autoavaliação salva.");
   }
 
@@ -1142,74 +1202,6 @@
     ctx.fillText("Média", lx + 46, ly + 7);
   }
 
-  function renderDashboard(records) {
-    const analyzedWithEval = records.filter(r => r.analysisStatus === "analyzed" && r.socioSaved);
-
-    return `
-      <div class="card">
-        <div class="top-line">
-          <strong>Seu Histórico</strong>
-          <button class="ghost" id="toggleHistoryBtn">Mostrar / ocultar</button>
-        </div>
-        <div id="historyContent" class="hidden">
-          <div class="small" style="margin-top:8px;">${analyzedWithEval.length} registro(s) com autoavaliação salva.</div>
-          <div class="dashboard-grid">
-            <div class="chart-card">
-              <div class="chart-title">Minha preparação prévia</div>
-              <canvas id="chartPreparacao"></canvas>
-            </div>
-            <div class="chart-card">
-              <div class="chart-title">Minha motivação prévia</div>
-              <canvas id="chartMotivacao"></canvas>
-            </div>
-            <div class="chart-card">
-              <div class="chart-title">Meu estado físico na gravação</div>
-              <canvas id="chartFisico"></canvas>
-            </div>
-            <div class="chart-card">
-              <div class="chart-title">Meu estado mental/emocional na gravação</div>
-              <canvas id="chartMental"></canvas>
-            </div>
-            <div class="chart-card">
-              <div class="chart-title">Infraestrutura funcionando na gravação</div>
-              <canvas id="chartInfraestrutura"></canvas>
-            </div>
-            <div class="chart-card">
-              <div class="chart-title">Minha satisfação final</div>
-              <canvas id="chartSatisfacao"></canvas>
-            </div>
-          </div>
-
-          <div class="history-list">
-            ${records.filter(r => r.analysisStatus === "analyzed").map((record) => `
-              <div class="history-item" data-history-id="${record.id}">
-                <div class="history-title">${formatDateTime(record.createdAt)}</div>
-                <div class="small" style="margin-bottom:6px;">${escapeHtml(record.tldr || "Sem resumo disponível.")}</div>
-                <div>
-                  ${buildTagsFromConfig(record.config, record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || "").map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}
-                  ${record.socioSaved ? `<span class="pill">autoavaliação salva</span>` : `<span class="pill">autoavaliação pendente</span>`}
-                  <span class="pill">${record.analysisModelSource === "user" ? "modelo definido por você" : "modelo sugerido"}</span>
-                </div>
-              </div>
-            `).join("")}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function paintDashboard(records) {
-    const analyzedWithEval = records.filter(r => r.analysisStatus === "analyzed" && r.socioSaved);
-    const labels = analyzedWithEval.map(r => formatShortDate(r.createdAt));
-
-    drawDashboardChart("chartPreparacao", analyzedWithEval.map(r => Number(r.socio?.preparacao ?? 0)), labels);
-    drawDashboardChart("chartMotivacao", analyzedWithEval.map(r => Number(r.socio?.motivacao ?? 0)), labels);
-    drawDashboardChart("chartFisico", analyzedWithEval.map(r => Number(r.socio?.fisico ?? 0)), labels);
-    drawDashboardChart("chartMental", analyzedWithEval.map(r => Number(r.socio?.mental ?? 0)), labels);
-    drawDashboardChart("chartInfraestrutura", analyzedWithEval.map(r => Number(r.socio?.infraestrutura ?? 0)), labels);
-    drawDashboardChart("chartSatisfacao", analyzedWithEval.map(r => Number(r.socio?.satisfacao ?? 0)), labels);
-  }
-
   function renderStructureBlocks(record) {
     const rows = Array.isArray(record.structure) ? record.structure : [];
     return rows.map((row, i) => `
@@ -1246,7 +1238,7 @@
 
       <div class="card">
         <strong>Sua autoavaliação</strong>
-        <div style="margin-top:12px;">
+        <div class="range-grid">
           ${renderSlider("Minha preparação prévia", "cur-preparacao", record.socio?.preparacao ?? 5)}
           ${renderSlider("Minha motivação prévia", "cur-motivacao", record.socio?.motivacao ?? 5)}
           ${renderSlider("Meu estado físico na gravação", "cur-fisico", record.socio?.fisico ?? 5)}
@@ -1417,7 +1409,7 @@
         <input type="hidden" id="postAnalysisModelSource" value="${config.analysisModelSource || "auto"}" />
         <input type="hidden" id="postAnalysisModelReason" value="${escapeHtml(config.analysisModelReason || inferred.reason)}" />
 
-        <div class="controls" style="justify-content:flex-start;">
+        <div class="controls-left">
           <button class="ghost" id="toggleModelOptionsBtn">Trocar modelo</button>
           <button class="ghost" id="clearLastConfigBtn">Limpar preenchimento</button>
         </div>
@@ -1523,27 +1515,18 @@
       <div class="card">
         <div class="section-title">Gravação encerrada</div>
 
-        <div class="action-grid">
-          <div class="action-card">
-            <button class="primary" id="analyzeBtn">Analisar gravação</button>
-            <div class="small" id="analyzeConnectionNote">${navigator.onLine ? "" : "Sem conexão para analisar."}</div>
-          </div>
-
-          <div class="action-card">
-            <button class="ghost" id="listenBtn">Ouvir gravação</button>
-            <div class="small">Tamanho do arquivo: ${audioSizeLabel}</div>
-          </div>
-
-          <div class="action-card">
-            <button class="ghost" id="deleteBtn">Deletar gravação</button>
-            <div class="small">Remove totalmente o arquivo de áudio.</div>
-          </div>
-
-          <div class="action-card">
-            <button class="ghost" id="shareBtn">Compartilhar gravação</button>
-            <div class="small">${navigator.onLine ? "Compartilhamento disponível." : "Sem conexão para compartilhar."}</div>
-          </div>
+        <button class="primary-wide" id="analyzeBtn">Analisar gravação</button>
+        <div class="small" id="analyzeConnectionNote" style="margin-top:8px;">
+          ${navigator.onLine ? "" : "Sem conexão para analisar."}
         </div>
+
+        <div class="secondary-row">
+          <button class="ghost" id="listenBtn">Ouvir gravação</button>
+          <button class="ghost" id="deleteBtn">Deletar gravação</button>
+          <button class="ghost" id="shareBtn">Compartilhar gravação</button>
+        </div>
+
+        <div class="small" style="margin-top:10px;">Tamanho do arquivo: ${audioSizeLabel}</div>
       </div>
     `;
 
@@ -1597,10 +1580,11 @@
         return;
       }
 
-      note.innerHTML = `<span class="analyzing">Orelho trabalhando pra você...</span>`;
+      startAnalysisLoading(note);
 
       const blob = await getAudioBlob(record.id);
       if (!blob) {
+        stopAnalysisLoading();
         note.textContent = "Gravação não encontrada.";
         return;
       }
@@ -1628,6 +1612,8 @@
         data = { error: "Falha ao conectar com o servidor." };
       }
 
+      stopAnalysisLoading();
+
       if (data.error) {
         note.textContent = data.error;
         return;
@@ -1652,6 +1638,106 @@
     document.getElementById("listenBtn").onclick = () => openAudioPlayer(record.id);
     document.getElementById("deleteBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareBtn").onclick = () => shareRecording(record.id);
+  }
+    function renderHistoryCard(records) {
+    const analyzed = records.filter(r => r.analysisStatus === "analyzed");
+    const analyzedWithEval = analyzed.filter(r => r.socioSaved);
+
+    return `
+      <div class="card">
+        <div class="top-line">
+          <strong>Sua evolução</strong>
+          <button class="ghost" id="toggleHistoryBtn">Mostrar / ocultar</button>
+        </div>
+
+        <div id="historyContent" class="hidden">
+          ${
+            analyzed.length === 0
+              ? `<div class="small" style="margin-top:10px;">Nenhuma análise ainda.</div>`
+              : `
+                <div class="small" style="margin-top:8px;">
+                  ${analyzedWithEval.length} registro(s) com autoavaliação salva.
+                </div>
+
+                ${
+                  analyzedWithEval.length === 0
+                    ? `<div class="small" style="margin-top:8px;">Preencha a autoavaliação para ativar os gráficos.</div>`
+                    : `
+                      <div class="dashboard-grid">
+                        <div class="chart-card">
+                          <div class="chart-title">Minha preparação prévia</div>
+                          <canvas id="chartPreparacao"></canvas>
+                        </div>
+                        <div class="chart-card">
+                          <div class="chart-title">Minha motivação prévia</div>
+                          <canvas id="chartMotivacao"></canvas>
+                        </div>
+                        <div class="chart-card">
+                          <div class="chart-title">Meu estado físico na gravação</div>
+                          <canvas id="chartFisico"></canvas>
+                        </div>
+                        <div class="chart-card">
+                          <div class="chart-title">Meu estado mental/emocional na gravação</div>
+                          <canvas id="chartMental"></canvas>
+                        </div>
+                        <div class="chart-card">
+                          <div class="chart-title">Infraestrutura funcionando na gravação</div>
+                          <canvas id="chartInfraestrutura"></canvas>
+                        </div>
+                        <div class="chart-card">
+                          <div class="chart-title">Minha satisfação final</div>
+                          <canvas id="chartSatisfacao"></canvas>
+                        </div>
+                      </div>
+                    `
+                }
+
+                <div class="history-list">
+                  ${analyzed.map((record) => `
+                    <div class="history-item" data-history-id="${record.id}">
+                      <div class="history-title">${formatDateTime(record.createdAt)}</div>
+                      <div class="small" style="margin-bottom:6px;">
+                        ${escapeHtml(record.tldr || "Sem resumo disponível.")}
+                      </div>
+                      <div>
+                        ${buildTagsFromConfig(
+                          record.config,
+                          record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || ""
+                        ).map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}
+                        ${record.socioSaved
+                          ? `<span class="pill">autoavaliação salva</span>`
+                          : `<span class="pill">autoavaliação pendente</span>`}
+                        <span class="pill">${record.analysisModelSource === "user" ? "modelo definido por você" : "modelo sugerido"}</span>
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              `
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  async function renderHistory() {
+    const records = await getAllRecords();
+    historyBlock.innerHTML = renderHistoryCard(records);
+
+    const toggleHistoryBtn = document.getElementById("toggleHistoryBtn");
+    const historyContent = document.getElementById("historyContent");
+
+    if (toggleHistoryBtn && historyContent) {
+      toggleHistoryBtn.onclick = () => {
+        historyContent.classList.toggle("hidden");
+        if (!historyContent.classList.contains("hidden")) {
+          paintDashboard(records.filter(r => r.analysisStatus === "analyzed"));
+        }
+      };
+    }
+
+    document.querySelectorAll("[data-history-id]").forEach((el) => {
+      el.onclick = () => openHistoryRecord(el.getAttribute("data-history-id"));
+    });
   }
 
   async function startRecording() {
@@ -1746,6 +1832,7 @@
 
       timerEl.textContent = "00:00";
       startBtn.disabled = false;
+      stopBtn.disabled = true;
       recorder = null;
 
       renderPostRecord(record);
