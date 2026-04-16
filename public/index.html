@@ -81,13 +81,6 @@
       margin-top:18px;
     }
 
-    .stack{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      margin-top:14px;
-    }
-
     .secondary-row{
       display:grid;
       grid-template-columns:repeat(3,1fr);
@@ -328,6 +321,13 @@
       justify-content:space-between;
       align-items:center;
       gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .history-actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
       flex-wrap:wrap;
     }
 
@@ -1149,20 +1149,27 @@
       return;
     }
 
-    const margin = { top: 30, right: 40, bottom: 70, left: 40 };
+    const margin = { top: 24, right: 26, bottom: 78, left: 44 };
     const chartW = W - margin.left - margin.right;
     const chartH = H - margin.top - margin.bottom;
 
     ctx.strokeStyle = "rgba(148,163,184,.12)";
     ctx.lineWidth = 1;
 
-    [0.25, 0.5, 0.75].forEach((g) => {
-      const y = margin.top + chartH * g;
-      ctx.beginPath();
-      ctx.moveTo(margin.left, y);
-      ctx.lineTo(W - margin.right, y);
-      ctx.stroke();
-    });
+    for (let i = 0; i <= 10; i++) {
+      const y = margin.top + chartH - (i / 10) * chartH;
+
+      if (i % 2 === 0) {
+        ctx.beginPath();
+        ctx.moveTo(margin.left, y);
+        ctx.lineTo(W - margin.right, y);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "14px Arial";
+      ctx.fillText(String(i), 12, y + 4);
+    }
 
     const slotW = chartW / values.length;
     const barW = Math.max(24, slotW * 0.46);
@@ -1201,8 +1208,8 @@
     });
     ctx.stroke();
 
-    const lx = W - 120;
-    const ly = 28;
+    const lx = W - 126;
+    const ly = 26;
     ctx.strokeStyle = "#ef8b6c";
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -1210,8 +1217,8 @@
     ctx.lineTo(lx + 36, ly);
     ctx.stroke();
     ctx.fillStyle = "#ef8b6c";
-    ctx.font = "20px Arial";
-    ctx.fillText("Média", lx + 46, ly + 7);
+    ctx.font = "18px Arial";
+    ctx.fillText("Média", lx + 46, ly + 6);
   }
 
   function renderStructureBlocks(record) {
@@ -1459,6 +1466,240 @@
 
     doc.save(`orelho-analise-${Date.now()}.pdf`);
   }
+    function renderAnalysis(record) {
+    analysisBlock.classList.remove("hidden");
+    const audioSizeLabel = record.recorded ? `${bytesToMB(record.audioSizeBytes || 0)} MB` : "sem gravação";
+    const modelLabel = record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || "Gagné";
+
+    analysisBlock.innerHTML = `
+      <div class="card">
+        <div class="section-title">Resumo rápido</div>
+        <div class="gagne-block">${escapeHtml(record.tldr || "Sem resumo disponível.")}</div>
+      </div>
+
+      <div class="card">
+        <strong>Modelo usado: ${escapeHtml(modelLabel)}</strong>
+        <div class="small" style="margin-top:8px;">${escapeHtml(record.analysisModelReason || "Sem motivo registrado.")}</div>
+      </div>
+
+      <div class="card">
+        <strong>Feedback pedagógico — ${escapeHtml(modelLabel)}</strong>
+        <div style="margin-top:12px;">
+          ${renderStructureBlocks(record)}
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Sua autoavaliação</strong>
+        <div class="range-grid">
+          ${renderSlider("Minha preparação prévia", "cur-preparacao", record.socio?.preparacao ?? 5)}
+          ${renderSlider("Minha motivação prévia", "cur-motivacao", record.socio?.motivacao ?? 5)}
+          ${renderSlider("Meu estado físico na gravação", "cur-fisico", record.socio?.fisico ?? 5)}
+          ${renderSlider("Meu estado mental/emocional na gravação", "cur-mental", record.socio?.mental ?? 5)}
+          ${renderSlider("Infraestrutura funcionando na gravação", "cur-infraestrutura", record.socio?.infraestrutura ?? 5)}
+          ${renderSlider("Minha satisfação final", "cur-satisfacao", record.socio?.satisfacao ?? 5)}
+        </div>
+        <div class="controls">
+          <button class="primary" id="saveEvalBtn">Salvar autoavaliação</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Ações</strong>
+        <div class="small" style="margin:10px 0 14px;">Arquivo de gravação: ${audioSizeLabel}</div>
+        <div class="controls">
+          <button class="ghost" id="savePdfBtn">Salvar PDF</button>
+          <button class="ghost" id="playCurrentAudioBtn" ${record.recorded ? "" : "disabled"}>Ouvir gravação</button>
+          <button class="ghost" id="deleteAudioBtn" ${record.recorded ? "" : "disabled"}>Deletar gravação</button>
+          <button class="ghost" id="shareAudioBtn" ${record.recorded ? "" : "disabled"}>Compartilhar gravação</button>
+        </div>
+      </div>
+    `;
+
+    applyRangeColors([
+      "cur-preparacao",
+      "cur-motivacao",
+      "cur-fisico",
+      "cur-mental",
+      "cur-infraestrutura",
+      "cur-satisfacao"
+    ]);
+
+    document.getElementById("saveEvalBtn").onclick = () => saveSelfEvaluation(record.id, {
+      preparacao: "cur-preparacao",
+      motivacao: "cur-motivacao",
+      fisico: "cur-fisico",
+      mental: "cur-mental",
+      infraestrutura: "cur-infraestrutura",
+      satisfacao: "cur-satisfacao"
+    });
+
+    document.getElementById("savePdfBtn").onclick = async () => {
+      const latest = await getRecord(record.id);
+      if (latest) generatePdf(latest);
+    };
+    document.getElementById("playCurrentAudioBtn").onclick = () => openAudioPlayer(record.id);
+    document.getElementById("deleteAudioBtn").onclick = () => deleteRecording(record.id);
+    document.getElementById("shareAudioBtn").onclick = () => shareRecording(record.id);
+  }
+
+  async function openHistoryRecord(recordId) {
+    const record = await getRecord(recordId);
+    if (!record) return;
+    renderAnalysis(record);
+    analysisBlock.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function addTable(doc, startY, rows) {
+    let y = startY;
+    const leftX = 15;
+    const rightX = 105;
+    const colWidth = 85;
+    const lineHeight = 5;
+
+    doc.setDrawColor(207, 216, 227);
+    rows.forEach(([key, value]) => {
+      const leftLines = doc.splitTextToSize(String(key), colWidth - 4);
+      const rightLines = doc.splitTextToSize(String(value), colWidth - 4);
+      const rowHeight = Math.max(leftLines.length, rightLines.length) * lineHeight + 4;
+
+      if (y + rowHeight > 280) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.rect(leftX, y, colWidth, rowHeight);
+      doc.rect(rightX, y, colWidth, rowHeight);
+
+      doc.setFont("helvetica", "bold");
+      doc.text(leftLines, leftX + 2, y + 4);
+      doc.setFont("helvetica", "normal");
+      doc.text(rightLines, rightX + 2, y + 4);
+
+      y += rowHeight;
+    });
+
+    return y + 4;
+  }
+
+  async function generatePdf(record) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    let y = 15;
+    const pageWidth = 180;
+    const compact = 5;
+
+    function addWrapped(text, bold = false) {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      const lines = doc.splitTextToSize(text, pageWidth);
+      doc.text(lines, 15, y);
+      y += lines.length * compact + 2;
+      if (y > 280) {
+        doc.addPage();
+        y = 20;
+      }
+    }
+
+    try {
+      doc.addImage("orelho-logo.png", "PNG", 15, y, 45, 18);
+      y += 24;
+    } catch {
+      addWrapped("ORELHO", true);
+    }
+
+    addWrapped("Relatório de análise da gravação", true);
+    addWrapped(`Modelo: ${record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || "Gagné"}`);
+    addWrapped(`Motivo da escolha: ${record.analysisModelReason || "Sem motivo registrado."}`);
+
+    addWrapped("Detalhes da gravação", true);
+    y = addTable(doc, y, [
+      ["Local/Instituição", record.config?.localInstitution || "Não informado"],
+      ["Ano/Semestre Letivo; Ciclo; Módulo", record.config?.yearLevel || "Não informado"],
+      ["Identificação do Curso", record.config?.courseId || "Não informado"],
+      ["Identificação da Turma", record.config?.classId || "Não informado"],
+      ["Disciplina", record.config?.subject || "Não informado"],
+      ["Tema/Objetivo do Encontro", record.config?.topicObjective || "Não informado"],
+      ["Aluno(s) Específico(s)", record.config?.specificStudents || "Não informado"],
+      ["Duração prevista do encontro", record.config?.durationMinutes || "Não informado"],
+    ]);
+
+    addWrapped("Resumo rápido", true);
+    addWrapped(record.tldr || "Sem resumo disponível.");
+
+    addWrapped(`Feedback pedagógico — ${record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || "Gagné"}`, true);
+    (record.structure || []).forEach((row, i) => {
+      addWrapped(`${i + 1}. ${row.criterion || ""}`, true);
+      addWrapped(`Evidência: ${row.evidence || "—"}`);
+      addWrapped(`Avaliação: ${row.evaluation || "—"}`);
+      addWrapped(`Observações: ${row.observation || "—"}`);
+    });
+
+    addWrapped("Autoavaliação", true);
+    y = addTable(doc, y, [
+      ["Minha preparação prévia", record.socio?.preparacao ?? "-"],
+      ["Minha motivação prévia", record.socio?.motivacao ?? "-"],
+      ["Meu estado físico na gravação", record.socio?.fisico ?? "-"],
+      ["Meu estado mental/emocional na gravação", record.socio?.mental ?? "-"],
+      ["Infraestrutura funcionando na gravação", record.socio?.infraestrutura ?? "-"],
+      ["Minha satisfação final", record.socio?.satisfacao ?? "-"],
+    ]);
+
+    const allRecords = await getAllRecords();
+    const dashboardRecords = getDashboardRecords(allRecords);
+
+    if (dashboardRecords.length > 0) {
+      doc.addPage();
+      y = 20;
+      addWrapped("Painel gráfico da autoavaliação", true);
+
+      const temp = document.createElement("div");
+      temp.style.position = "absolute";
+      temp.style.left = "-99999px";
+      temp.style.top = "0";
+      temp.style.width = "900px";
+      temp.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <canvas id="pdfChartPreparacao" width="800" height="420"></canvas>
+          <canvas id="pdfChartMotivacao" width="800" height="420"></canvas>
+          <canvas id="pdfChartFisico" width="800" height="420"></canvas>
+          <canvas id="pdfChartMental" width="800" height="420"></canvas>
+          <canvas id="pdfChartInfraestrutura" width="800" height="420"></canvas>
+          <canvas id="pdfChartSatisfacao" width="800" height="420"></canvas>
+        </div>
+      `;
+      document.body.appendChild(temp);
+
+      const labels = dashboardRecords.map(r => formatShortDate(r.createdAt));
+      const valueMap = [
+        ["pdfChartPreparacao", dashboardRecords.map(r => Number(r.socio?.preparacao ?? 0)), labels],
+        ["pdfChartMotivacao", dashboardRecords.map(r => Number(r.socio?.motivacao ?? 0)), labels],
+        ["pdfChartFisico", dashboardRecords.map(r => Number(r.socio?.fisico ?? 0)), labels],
+        ["pdfChartMental", dashboardRecords.map(r => Number(r.socio?.mental ?? 0)), labels],
+        ["pdfChartInfraestrutura", dashboardRecords.map(r => Number(r.socio?.infraestrutura ?? 0)), labels],
+        ["pdfChartSatisfacao", dashboardRecords.map(r => Number(r.socio?.satisfacao ?? 0)), labels],
+      ];
+
+      valueMap.forEach(([id, values, lbls]) => drawDashboardChart(id, values, lbls));
+
+      const canvases = temp.querySelectorAll("canvas");
+      let drawY = 30;
+      let isLeft = true;
+
+      canvases.forEach((canvas, index) => {
+        const img = canvas.toDataURL("image/png");
+        const x = isLeft ? 10 : 108;
+        doc.addImage(img, "PNG", x, drawY, 90, 52);
+        isLeft = !isLeft;
+        if (isLeft) drawY += 58;
+        if (index === canvases.length - 1 && !isLeft) drawY += 58;
+      });
+
+      document.body.removeChild(temp);
+    }
+
+    doc.save(`orelho-analise-${Date.now()}.pdf`);
+  }
 
   function buildPostRecordModelSection(config) {
     const inferred = inferModelFromConfig(config);
@@ -1467,18 +1708,16 @@
       : inferred.model;
 
     return `
-      <div class="card" style="margin-top:14px;background:#fff;">
+      <div style="margin-top:10px;">
         <div class="small">Modelo de análise</div>
-        <strong><span id="selectedModelLabel">${MODEL_CATALOG[selectedKey].label}</span></strong>
+        <div class="top-line" style="margin-top:6px;">
+          <strong><span id="selectedModelLabel">${MODEL_CATALOG[selectedKey].label}</span></strong>
+          <button class="ghost" id="toggleModelOptionsBtn">Trocar</button>
+        </div>
 
         <input type="hidden" id="postAnalysisModel" value="${selectedKey}" />
         <input type="hidden" id="postAnalysisModelSource" value="${config.analysisModelSource || "auto"}" />
         <input type="hidden" id="postAnalysisModelReason" value="${escapeHtml(config.analysisModelReason || inferred.reason)}" />
-
-        <div class="controls-left">
-          <button class="ghost" id="toggleModelOptionsBtn">Trocar</button>
-          <button class="ghost" id="clearLastConfigBtn">Limpar preenchimento</button>
-        </div>
 
         <div id="modelOptionsBlock" class="hidden">
           ${renderModelOptions(selectedKey)}
@@ -1500,7 +1739,10 @@
       <div class="card">
         <div class="top-line">
           <strong>Detalhes da gravação</strong>
-          <button class="ghost" id="toggleDetailsBtn">Editar</button>
+          <div class="controls-left" style="margin-top:0;">
+            <button class="ghost" id="clearLastConfigBtn">Limpar preenchimento</button>
+            <button class="ghost" id="toggleDetailsBtn">Editar</button>
+          </div>
         </div>
 
         <div class="small details-summary" id="postDetailsSummary"></div>
@@ -1573,13 +1815,13 @@
               </div>
             </div>
           </div>
-
-          ${buildPostRecordModelSection(cfg)}
         </div>
       </div>
 
       <div class="card">
         <div class="section-title">Gravação encerrada</div>
+
+        ${buildPostRecordModelSection(cfg)}
 
         <button class="primary-wide" id="analyzeBtn">Analisar gravação</button>
         <div class="small" id="analyzeConnectionNote" style="margin-top:8px;">
@@ -1611,6 +1853,15 @@
     document.getElementById("toggleModelOptionsBtn").onclick = () => {
       document.getElementById("modelOptionsBlock").classList.toggle("hidden");
     };
+
+    document.querySelectorAll('input[name="analysisModelChoice"]').forEach((radio) => {
+      radio.addEventListener("change", () => {
+        const sourceInput = document.getElementById("postAnalysisModelSource");
+        if (sourceInput) sourceInput.value = "user";
+        updateModelSuggestionUI();
+        document.getElementById("modelOptionsBlock").classList.add("hidden");
+      });
+    });
 
     document.getElementById("analyzeBtn").onclick = async () => {
       const note = document.getElementById("analyzeConnectionNote");
@@ -1707,7 +1958,30 @@
     document.getElementById("deleteBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareBtn").onclick = () => shareRecording(record.id);
   }
-    function renderDashboard(records) {
+    async function clearAllHistory() {
+    const ok = confirm("Isso apagará TODAS as aulas, áudios e gráficos. Deseja continuar?");
+    if (!ok) return;
+
+    const db = await openAppDB();
+
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction([RECORDS_STORE, AUDIO_STORE], "readwrite");
+      tx.objectStore(RECORDS_STORE).clear();
+      tx.objectStore(AUDIO_STORE).clear();
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+
+    postRecordBlock.innerHTML = "";
+    postRecordBlock.classList.add("hidden");
+    analysisBlock.innerHTML = "";
+    analysisBlock.classList.add("hidden");
+
+    await renderHistory();
+    alert("Histórico apagado.");
+  }
+
+  function renderDashboard(records) {
     const analyzed = records.filter(r => r.analysisStatus === "analyzed");
     const analyzedWithEval = getDashboardRecords(records);
 
@@ -1715,7 +1989,10 @@
       <div class="card">
         <div class="top-line">
           <strong>Sua evolução</strong>
-          <button class="ghost" id="toggleHistoryBtn">Ver histórico</button>
+          <div class="history-actions">
+            <button class="ghost" id="toggleHistoryBtn">Ver histórico</button>
+            <button class="ghost" id="clearHistoryBtn">Limpar histórico</button>
+          </div>
         </div>
 
         <div class="history-meta">
@@ -1797,6 +2074,7 @@
     historyBlock.innerHTML = renderDashboard(records);
 
     const toggleHistoryBtn = document.getElementById("toggleHistoryBtn");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
     const historyContent = document.getElementById("historyContent");
 
     if (toggleHistoryBtn && historyContent) {
@@ -1807,6 +2085,10 @@
           paintDashboard(records);
         }
       };
+    }
+
+    if (clearHistoryBtn) {
+      clearHistoryBtn.onclick = clearAllHistory;
     }
 
     document.querySelectorAll("[data-history-id]").forEach((el) => {
@@ -1919,7 +2201,8 @@
 
   window.addEventListener("online", renderConnectionStatus);
   window.addEventListener("offline", renderConnectionStatus);
-    async function init() {
+
+  async function init() {
     renderConnectionStatus();
     await renderHistory();
   }
