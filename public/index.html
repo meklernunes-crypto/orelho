@@ -115,11 +115,6 @@
 
     .primary{background:var(--blue);color:#fff}
     .danger{background:var(--orange);color:#fff}
-    .ghost{
-      background:#fff;
-      color:var(--text);
-      border:1px solid var(--border);
-    }
 
     .primary-wide{
       background:var(--blue);
@@ -127,6 +122,12 @@
       width:100%;
       padding:16px 18px;
       font-size:16px;
+    }
+
+    .ghost{
+      background:#fff;
+      color:var(--text);
+      border:1px solid var(--border);
     }
 
     .metric{
@@ -1639,7 +1640,7 @@
     document.getElementById("deleteBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareBtn").onclick = () => shareRecording(record.id);
   }
-    function renderHistoryCard(records) {
+    function renderDashboard(records) {
     const analyzed = records.filter(r => r.analysisStatus === "analyzed");
     const analyzedWithEval = analyzed.filter(r => r.socioSaved);
 
@@ -1719,9 +1720,21 @@
     `;
   }
 
+  function paintDashboard(records) {
+    const analyzedWithEval = records.filter(r => r.analysisStatus === "analyzed" && r.socioSaved);
+    const labels = analyzedWithEval.map(r => formatShortDate(r.createdAt));
+
+    drawDashboardChart("chartPreparacao", analyzedWithEval.map(r => Number(r.socio?.preparacao ?? 0)), labels);
+    drawDashboardChart("chartMotivacao", analyzedWithEval.map(r => Number(r.socio?.motivacao ?? 0)), labels);
+    drawDashboardChart("chartFisico", analyzedWithEval.map(r => Number(r.socio?.fisico ?? 0)), labels);
+    drawDashboardChart("chartMental", analyzedWithEval.map(r => Number(r.socio?.mental ?? 0)), labels);
+    drawDashboardChart("chartInfraestrutura", analyzedWithEval.map(r => Number(r.socio?.infraestrutura ?? 0)), labels);
+    drawDashboardChart("chartSatisfacao", analyzedWithEval.map(r => Number(r.socio?.satisfacao ?? 0)), labels);
+  }
+
   async function renderHistory() {
     const records = await getAllRecords();
-    historyBlock.innerHTML = renderHistoryCard(records);
+    historyBlock.innerHTML = renderDashboard(records);
 
     const toggleHistoryBtn = document.getElementById("toggleHistoryBtn");
     const historyContent = document.getElementById("historyContent");
@@ -1730,7 +1743,7 @@
       toggleHistoryBtn.onclick = () => {
         historyContent.classList.toggle("hidden");
         if (!historyContent.classList.contains("hidden")) {
-          paintDashboard(records.filter(r => r.analysisStatus === "analyzed"));
+          paintDashboard(records);
         }
       };
     }
