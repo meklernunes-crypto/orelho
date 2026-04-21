@@ -391,6 +391,10 @@
       color:var(--text);
     }
 
+    .chart-wrap{
+      position:relative;
+    }
+
     canvas{
       width:100%;
       height:240px;
@@ -398,6 +402,18 @@
       border:1px solid var(--border);
       border-radius:12px;
       display:block;
+    }
+
+    .chart-insight{
+      position:absolute;
+      left:12px;
+      bottom:10px;
+      font-size:12px;
+      color:var(--muted);
+      background:rgba(255,255,255,.86);
+      padding:4px 8px;
+      border-radius:999px;
+      pointer-events:none;
     }
 
     .model-option{
@@ -443,6 +459,31 @@
       animation:pulse 1.2s infinite;
       color:var(--blue);
       font-weight:700;
+    }
+
+    .score-badge{
+      display:inline-block;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      margin-top:8px;
+      color:#fff;
+    }
+
+    .filter-grid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      margin-top:12px;
+    }
+
+    @media(max-width:900px){
+      .filter-grid{grid-template-columns:repeat(2,1fr)}
+    }
+
+    @media(max-width:560px){
+      .filter-grid{grid-template-columns:1fr}
     }
 
     @keyframes pulse{
@@ -542,6 +583,13 @@
   let activeVoiceRecognition = null;
   let analysisMessageInterval = null;
 
+  let activeFilters = {
+    institution: "",
+    course: "",
+    classId: "",
+    subject: "",
+  };
+
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
   const timerEl = document.getElementById("timer");
@@ -557,6 +605,10 @@
   function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return `${pad(m)}:${pad(s)}`; }
   function escapeHtml(str=""){ return str.replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m])); }
   function bytesToMB(bytes = 0) { return (bytes / (1024 * 1024)).toFixed(2); }
+
+  function normalizeText(v="") {
+    return String(v || "").trim().toLowerCase();
+  }
 
   function formatDateTime(isoString) {
     try {
@@ -912,8 +964,7 @@
     await renderHistory();
     alert("Gravação deletada.");
   }
-
-  function fillConfigFields(cfg = {}) {
+    function fillConfigFields(cfg = {}) {
     const finalCfg = { ...getDefaultConfig(), ...cfg };
     const set = (id, val) => {
       const el = document.getElementById(id);
@@ -1113,6 +1164,38 @@
     return Number(avg.toFixed(1));
   }
 
+  function getLessonScoreMeta(score) {
+    if (score === null || Number.isNaN(score)) return { label: "-", color: "#94a3b8" };
+    if (score <= 4) return { label: "Atenção", color: "#ef4444" };
+    if (score <= 7) return { label: "Estável", color: "#eab308" };
+    return { label: "Alta performance", color: "#22c55e" };
+  }
+
+  function getChartInsight(values) {
+    if (!values.length) return "Sem dados ainda.";
+    const avg = values.reduce((a,b)=>a+b,0)/values.length;
+    const last = values[values.length-1];
+    const prev = values.length > 1 ? values[values.length-2] : last;
+
+    let trend = "estável";
+    if (last > prev) trend = "em evolução";
+    if (last < prev) trend = "em queda recente";
+
+    if (avg >= 8) return `Padrão alto e ${trend}.`;
+    if (avg >= 6) return `Faixa consistente, ${trend}.`;
+    return `Ponto de atenção, ${trend}.`;
+  }
+
+  function recordMatchesFilters(record) {
+    const cfg = record?.config || {};
+    return (
+      (!activeFilters.institution || normalizeText(cfg.localInstitution).includes(activeFilters.institution)) &&
+      (!activeFilters.course || normalizeText(cfg.courseId).includes(activeFilters.course)) &&
+      (!activeFilters.classId || normalizeText(cfg.classId).includes(activeFilters.classId)) &&
+      (!activeFilters.subject || normalizeText(cfg.subject).includes(activeFilters.subject))
+    );
+  }
+
   async function saveSelfEvaluation(recordId, idsMap) {
     const current = await getRecord(recordId);
     if (!current) return;
@@ -1154,6 +1237,8 @@
       ctx.fillStyle = "#94a3b8";
       ctx.font = "24px Arial";
       ctx.fillText("Sem dados ainda", 28, 110);
+      const insightEl = canvas.parentElement.querySelector(".chart-insight");
+      if (insightEl) insightEl.textContent = "Sem dados ainda.";
       return;
     }
 
@@ -1182,6 +1267,9 @@
     const slotW = chartW / values.length;
     const barW = Math.max(24, slotW * 0.46);
 
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+
     let sum = 0;
     const medias = values.map((v, i) => {
       sum += v;
@@ -1193,7 +1281,11 @@
       const barH = (v / 10) * chartH;
       const y = margin.top + chartH - barH;
 
-      ctx.fillStyle = "#c8dff0";
+      let fill = "#c8dff0";
+      if (v === max && max !== min) fill = "#bff3cf";
+      if (v === min && max !== min) fill = "#ffd0d0";
+
+      ctx.fillStyle = fill;
       ctx.fillRect(x, y, barW, barH);
 
       ctx.fillStyle = "#64748b";
@@ -1227,6 +1319,9 @@
     ctx.fillStyle = "#ef8b6c";
     ctx.font = "18px Arial";
     ctx.fillText("Média", lx + 46, ly + 6);
+
+    const insightEl = canvas.parentElement.querySelector(".chart-insight");
+    if (insightEl) insightEl.textContent = getChartInsight(values);
   }
 
   function renderStructureBlocks(record) {
@@ -1240,19 +1335,32 @@
       </div>
     `).join("");
   }
+
+  function renderFilterBlock() {
+    return `
+      <div class="card">
+        <strong>Filtrar evolução</strong>
+        <div class="filter-grid">
+          <input id="filterInstitution" placeholder="Instituição" value="${escapeHtml(activeFilters.institution)}" />
+          <input id="filterCourse" placeholder="Curso" value="${escapeHtml(activeFilters.course)}" />
+          <input id="filterClass" placeholder="Turma" value="${escapeHtml(activeFilters.classId)}" />
+          <input id="filterSubject" placeholder="Disciplina" value="${escapeHtml(activeFilters.subject)}" />
+        </div>
+        <div class="controls-left">
+          <button class="ghost" id="applyFilterBtn">Aplicar filtro</button>
+          <button class="ghost" id="clearFilterBtn">Limpar filtro</button>
+        </div>
+      </div>
+    `;
+  }
     function renderAnalysis(record) {
     analysisBlock.classList.remove("hidden");
     const audioSizeLabel = record.recorded ? `${bytesToMB(record.audioSizeBytes || 0)} MB` : "sem gravação";
     const modelLabel = record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || "Gagné";
     const lessonScore = getLessonScore(record);
+    const lessonScoreMeta = getLessonScoreMeta(lessonScore);
 
     analysisBlock.innerHTML = `
-      <div class="card">
-        <div class="section-title">Nota da Aula</div>
-        <div class="metric" style="margin-top:0;">${lessonScore !== null ? lessonScore : "-"}</div>
-        <div class="small">Média das 6 notas da sua autoavaliação.</div>
-      </div>
-
       <div class="card">
         <div class="section-title">Resumo rápido</div>
         <div class="gagne-block">${escapeHtml(record.tldr || "Sem resumo disponível.")}</div>
@@ -1283,6 +1391,13 @@
         <div class="controls">
           <button class="primary" id="saveEvalBtn">Salvar autoavaliação</button>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Nota da Aula</div>
+        <div class="metric" style="margin-top:0;">${lessonScore !== null ? lessonScore : "-"}</div>
+        <div class="score-badge" style="background:${lessonScoreMeta.color};">${lessonScoreMeta.label}</div>
+        <div class="small" style="margin-top:8px;">Média das 6 notas da sua autoavaliação.</div>
       </div>
 
       <div class="card">
@@ -1393,8 +1508,6 @@
     addWrapped(`Modelo: ${record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || "Gagné"}`);
     addWrapped(`Motivo da escolha: ${record.analysisModelReason || "Sem motivo registrado."}`);
 
-    addWrapped(`Nota da Aula: ${getLessonScore(record) ?? "-"}`, true);
-
     addWrapped("Detalhes da gravação", true);
     y = addTable(doc, y, [
       ["Local/Instituição", record.config?.localInstitution || "Não informado"],
@@ -1428,8 +1541,10 @@
       ["Minha satisfação final", record.socio?.satisfacao ?? "-"],
     ]);
 
+    addWrapped(`Nota da Aula: ${getLessonScore(record) ?? "-"}`, true);
+
     const allRecords = await getAllRecords();
-    const dashboardRecords = getDashboardRecords(allRecords);
+    const dashboardRecords = getDashboardRecords(allRecords).filter(recordMatchesFilters);
 
     if (dashboardRecords.length > 0) {
       doc.addPage();
@@ -1600,7 +1715,8 @@
           </div>
         </div>
       </div>
-            <div class="card">
+
+      <div class="card">
         <div class="section-title">Gravação encerrada</div>
 
         ${buildPostRecordModelSection(cfg)}
@@ -1740,8 +1856,7 @@
     document.getElementById("deleteBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareBtn").onclick = () => shareRecording(record.id);
   }
-
-  async function clearAllHistory() {
+    async function clearAllHistory() {
     const ok = confirm("Isso apagará TODAS as aulas, áudios e gráficos. Deseja continuar?");
     if (!ok) return;
 
@@ -1766,9 +1881,12 @@
 
   function renderDashboard(records) {
     const analyzed = records.filter(r => r.analysisStatus === "analyzed");
-    const analyzedWithEval = getDashboardRecords(records);
+    const filteredAnalyzed = analyzed.filter(recordMatchesFilters);
+    const analyzedWithEval = getDashboardRecords(records).filter(recordMatchesFilters);
 
     return `
+      ${renderFilterBlock()}
+
       <div class="card">
         <div class="top-line">
           <strong>Sua evolução</strong>
@@ -1779,13 +1897,13 @@
         </div>
 
         <div class="history-meta">
-          ${analyzed.length} aulas analisadas • ${analyzedWithEval.length} com autoavaliação
+          ${filteredAnalyzed.length} aulas filtradas • ${analyzedWithEval.length} com autoavaliação
         </div>
 
         <div id="historyContent" class="hidden">
           ${
-            analyzed.length === 0
-              ? `<div class="small" style="margin-top:10px;">Nenhuma análise ainda.</div>`
+            filteredAnalyzed.length === 0
+              ? `<div class="small" style="margin-top:10px;">Nenhuma análise encontrada para este filtro.</div>`
               : `
                 ${
                   analyzedWithEval.length === 0
@@ -1794,34 +1912,52 @@
                       <div class="dashboard-grid">
                         <div class="chart-card">
                           <div class="chart-title">Minha preparação prévia</div>
-                          <canvas id="chartPreparacao"></canvas>
+                          <div class="chart-wrap">
+                            <canvas id="chartPreparacao"></canvas>
+                            <div class="chart-insight"></div>
+                          </div>
                         </div>
                         <div class="chart-card">
                           <div class="chart-title">Minha motivação prévia</div>
-                          <canvas id="chartMotivacao"></canvas>
+                          <div class="chart-wrap">
+                            <canvas id="chartMotivacao"></canvas>
+                            <div class="chart-insight"></div>
+                          </div>
                         </div>
                         <div class="chart-card">
                           <div class="chart-title">Meu estado físico na gravação</div>
-                          <canvas id="chartFisico"></canvas>
+                          <div class="chart-wrap">
+                            <canvas id="chartFisico"></canvas>
+                            <div class="chart-insight"></div>
+                          </div>
                         </div>
                         <div class="chart-card">
                           <div class="chart-title">Meu estado mental/emocional na gravação</div>
-                          <canvas id="chartMental"></canvas>
+                          <div class="chart-wrap">
+                            <canvas id="chartMental"></canvas>
+                            <div class="chart-insight"></div>
+                          </div>
                         </div>
                         <div class="chart-card">
                           <div class="chart-title">Infraestrutura funcionando na gravação</div>
-                          <canvas id="chartInfraestrutura"></canvas>
+                          <div class="chart-wrap">
+                            <canvas id="chartInfraestrutura"></canvas>
+                            <div class="chart-insight"></div>
+                          </div>
                         </div>
                         <div class="chart-card">
                           <div class="chart-title">Minha satisfação final</div>
-                          <canvas id="chartSatisfacao"></canvas>
+                          <div class="chart-wrap">
+                            <canvas id="chartSatisfacao"></canvas>
+                            <div class="chart-insight"></div>
+                          </div>
                         </div>
                       </div>
                     `
                 }
 
                 <div class="history-list">
-                  ${analyzed.map((record) => `
+                  ${filteredAnalyzed.map((record) => `
                     <div class="history-item" data-history-id="${record.id}">
                       <div class="history-title">${formatDateTime(record.createdAt)}</div>
                       <div class="small" style="margin-bottom:6px;">${escapeHtml(record.tldr || "Sem resumo disponível.")}</div>
@@ -1841,7 +1977,7 @@
   }
 
   function paintDashboard(records) {
-    const analyzedWithEval = getDashboardRecords(records);
+    const analyzedWithEval = getDashboardRecords(records).filter(recordMatchesFilters);
     const labels = analyzedWithEval.map(r => formatShortDate(r.createdAt));
 
     drawDashboardChart("chartPreparacao", analyzedWithEval.map(r => Number(r.socio?.preparacao ?? 0)), labels);
@@ -1859,6 +1995,25 @@
     const toggleHistoryBtn = document.getElementById("toggleHistoryBtn");
     const clearHistoryBtn = document.getElementById("clearHistoryBtn");
     const historyContent = document.getElementById("historyContent");
+    const applyFilterBtn = document.getElementById("applyFilterBtn");
+    const clearFilterBtn = document.getElementById("clearFilterBtn");
+
+    if (applyFilterBtn) {
+      applyFilterBtn.onclick = async () => {
+        activeFilters.institution = normalizeText(document.getElementById("filterInstitution")?.value);
+        activeFilters.course = normalizeText(document.getElementById("filterCourse")?.value);
+        activeFilters.classId = normalizeText(document.getElementById("filterClass")?.value);
+        activeFilters.subject = normalizeText(document.getElementById("filterSubject")?.value);
+        await renderHistory();
+      };
+    }
+
+    if (clearFilterBtn) {
+      clearFilterBtn.onclick = async () => {
+        activeFilters = { institution:"", course:"", classId:"", subject:"" };
+        await renderHistory();
+      };
+    }
 
     if (toggleHistoryBtn && historyContent) {
       toggleHistoryBtn.onclick = () => {
