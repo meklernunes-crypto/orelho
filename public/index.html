@@ -87,8 +87,16 @@
       margin-top:12px;
     }
 
+    .analysis-choice-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:12px;
+    }
+
     @media(max-width:700px){
-      .secondary-row{grid-template-columns:1fr}
+      .secondary-row,
+      .analysis-choice-row{grid-template-columns:1fr}
     }
 
     button{
@@ -114,6 +122,18 @@
       width:100%;
       padding:16px 18px;
       font-size:16px;
+    }
+
+    .quick-btn{
+      background:var(--blue);
+      color:#fff;
+      width:100%;
+    }
+
+    .full-btn{
+      background:var(--orange);
+      color:#fff;
+      width:100%;
     }
 
     .ghost{
@@ -499,10 +519,6 @@
       padding:0;
     }
 
-    .pdf-cover{
-      font-size:0;
-    }
-
     @keyframes pulse{
       0%{opacity:0.3}
       50%{opacity:1}
@@ -547,42 +563,15 @@
   const AUDIO_STORE = "audios";
 
   const MODEL_CATALOG = {
-    gagne: {
-      label: "Gagné",
-      description: "Presencial / Síncrona • Todos os níveis • Conteúdos processuais, técnicos e passo a passo.",
-    },
-    bloom: {
-      label: "Bloom",
-      description: "Híbrida / EAD / Presencial • Fundamental 1 ao Superior • Complexidade e objetivos cognitivos.",
-    },
-    merrill: {
-      label: "Merrill",
-      description: "EAD / Híbrida • Superior e Corporativo • Problemas reais e estudos de caso.",
-    },
-    arcs: {
-      label: "ARCS",
-      description: "EAD (assíncrona) / Áudio • Médio ao Corporativo • Temas áridos onde o engajamento é o desafio.",
-    },
-    addie: {
-      label: "ADDIE",
-      description: "Gestão / Design Instrucional • Coordenação • Planejamento macro da estrutura do curso.",
-    },
-    assure: {
-      label: "ASSURE",
-      description: "Híbrida / Multimídia • Fundamental ao Médio • Uso de tecnologia em sala.",
-    },
-    tpack: {
-      label: "TPACK",
-      description: "Híbrida / EAD • Todos os níveis • Domínio de tecnologia tanto quanto do tema.",
-    },
-    reggio: {
-      label: "Reggio Emilia",
-      description: "Presencial • Educação Infantil • Exploração sensorial e autonomia criativa.",
-    },
-    kirkpatrick: {
-      label: "Kirkpatrick",
-      description: "Avaliação de impacto • Corporativo • Resultado e aplicação prática.",
-    },
+    gagne: { label: "Gagné", description: "Presencial / Síncrona • Todos os níveis • Conteúdos processuais, técnicos e passo a passo." },
+    bloom: { label: "Bloom", description: "Híbrida / EAD / Presencial • Fundamental 1 ao Superior • Complexidade e objetivos cognitivos." },
+    merrill: { label: "Merrill", description: "EAD / Híbrida • Superior e Corporativo • Problemas reais e estudos de caso." },
+    arcs: { label: "ARCS", description: "EAD (assíncrona) / Áudio • Médio ao Corporativo • Temas áridos onde o engajamento é o desafio." },
+    addie: { label: "ADDIE", description: "Gestão / Design Instrucional • Coordenação • Planejamento macro da estrutura do curso." },
+    assure: { label: "ASSURE", description: "Híbrida / Multimídia • Fundamental ao Médio • Uso de tecnologia em sala." },
+    tpack: { label: "TPACK", description: "Híbrida / EAD • Todos os níveis • Domínio de tecnologia tanto quanto do tema." },
+    reggio: { label: "Reggio Emilia", description: "Presencial • Educação Infantil • Exploração sensorial e autonomia criativa." },
+    kirkpatrick: { label: "Kirkpatrick", description: "Avaliação de impacto • Corporativo • Resultado e aplicação prática." }
   };
 
   const ANALYSIS_MESSAGES = [
@@ -604,7 +593,7 @@
     institution: "",
     course: "",
     classId: "",
-    subject: "",
+    subject: ""
   };
 
   const startBtn = document.getElementById("startBtn");
@@ -622,25 +611,14 @@
   function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return `${pad(m)}:${pad(s)}`; }
   function escapeHtml(str=""){ return str.replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m])); }
   function bytesToMB(bytes = 0) { return (bytes / (1024 * 1024)).toFixed(2); }
-
-  function normalizeText(v="") {
-    return String(v || "").trim().toLowerCase();
-  }
+  function normalizeText(v="") { return String(v || "").trim().toLowerCase(); }
 
   function formatDateTime(isoString) {
-    try {
-      return new Date(isoString).toLocaleString("pt-BR");
-    } catch {
-      return isoString || "";
-    }
+    try { return new Date(isoString).toLocaleString("pt-BR"); } catch { return isoString || ""; }
   }
 
   function formatShortDate(isoString) {
-    try {
-      return new Date(isoString).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-    } catch {
-      return "";
-    }
+    try { return new Date(isoString).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }); } catch { return ""; }
   }
 
   function renderConnectionStatus() {
@@ -674,7 +652,7 @@
       durationMinutes: "",
       analysisModel: "gagne",
       analysisModelSource: "auto",
-      analysisModelReason: "Modelo padrão.",
+      analysisModelReason: "Modelo padrão."
     };
   }
 
@@ -816,8 +794,7 @@
       btn.ontouchcancel = stop;
     });
   }
-
-  function inferModelFromConfig(config) {
+    function inferModelFromConfig(config) {
     const haystack = [
       config.localInstitution,
       config.yearLevel,
@@ -830,37 +807,14 @@
 
     const hasAny = (...terms) => terms.some((term) => haystack.includes(term));
 
-    if (hasAny("infantil", "educação infantil", "educacao infantil", "creche", "pré-escola", "pre-escola", "lúdico", "ludico")) {
-      return { model: "reggio", reason: "Os detalhes sugerem Educação Infantil, escuta, autonomia e exploração criativa." };
-    }
-
-    if (hasAny("corporativo", "educação corporativa", "educacao corporativa", "treinamento", "onboarding", "vendas", "gestão", "gestao", "ti", "caso real", "estudo de caso")) {
-      return { model: "merrill", reason: "Os detalhes sugerem aplicação prática, problema real ou treinamento." };
-    }
-
-    if (hasAny("ead", "híbrida", "hibrida", "online", "remoto", "áudio", "audio", "engajamento", "tema árido", "tema arido")) {
-      return { model: "arcs", reason: "Os detalhes sugerem desafio de motivação, atenção e engajamento." };
-    }
-
-    if (hasAny("prova", "redação", "redacao", "argumentação", "argumentacao", "análise", "analise", "produção textual", "producao textual", "debate")) {
-      return { model: "bloom", reason: "Os detalhes sugerem foco em complexidade cognitiva e construção intelectual." };
-    }
-
-    if (hasAny("coordenação", "coordenacao", "currículo", "curriculo", "plano de curso", "planejamento", "desenho instrucional")) {
-      return { model: "addie", reason: "Os detalhes sugerem planejamento macro e design instrucional." };
-    }
-
-    if (hasAny("google classroom", "moodle", "plataforma", "tecnologia", "lms", "ambiente virtual", "lousa digital", "aplicativo")) {
-      return { model: "tpack", reason: "Os detalhes sugerem integração entre pedagogia, tecnologia e conteúdo." };
-    }
-
-    if (hasAny("mídia", "midia", "vídeo", "video", "multimídia", "multimidia", "recurso digital", "recurso audiovisual")) {
-      return { model: "assure", reason: "Os detalhes sugerem aula mediada por recursos e tecnologia." };
-    }
-
-    if (hasAny("impacto", "resultado", "aplicação prática", "aplicacao pratica", "mudança de comportamento", "mudanca de comportamento")) {
-      return { model: "kirkpatrick", reason: "Os detalhes sugerem foco em impacto e aplicação posterior." };
-    }
+    if (hasAny("infantil", "educação infantil", "educacao infantil", "creche", "pré-escola", "pre-escola", "lúdico", "ludico")) return { model: "reggio", reason: "Os detalhes sugerem Educação Infantil, escuta, autonomia e exploração criativa." };
+    if (hasAny("corporativo", "educação corporativa", "educacao corporativa", "treinamento", "onboarding", "vendas", "gestão", "gestao", "ti", "caso real", "estudo de caso")) return { model: "merrill", reason: "Os detalhes sugerem aplicação prática, problema real ou treinamento." };
+    if (hasAny("ead", "híbrida", "hibrida", "online", "remoto", "áudio", "audio", "engajamento", "tema árido", "tema arido")) return { model: "arcs", reason: "Os detalhes sugerem desafio de motivação, atenção e engajamento." };
+    if (hasAny("prova", "redação", "redacao", "argumentação", "argumentacao", "análise", "analise", "produção textual", "producao textual", "debate")) return { model: "bloom", reason: "Os detalhes sugerem foco em complexidade cognitiva e construção intelectual." };
+    if (hasAny("coordenação", "coordenacao", "currículo", "curriculo", "plano de curso", "planejamento", "desenho instrucional")) return { model: "addie", reason: "Os detalhes sugerem planejamento macro e design instrucional." };
+    if (hasAny("google classroom", "moodle", "plataforma", "tecnologia", "lms", "ambiente virtual", "lousa digital", "aplicativo")) return { model: "tpack", reason: "Os detalhes sugerem integração entre pedagogia, tecnologia e conteúdo." };
+    if (hasAny("mídia", "midia", "vídeo", "video", "multimídia", "multimidia", "recurso digital", "recurso audiovisual")) return { model: "assure", reason: "Os detalhes sugerem aula mediada por recursos e tecnologia." };
+    if (hasAny("impacto", "resultado", "aplicação prática", "aplicacao pratica", "mudança de comportamento", "mudanca de comportamento")) return { model: "kirkpatrick", reason: "Os detalhes sugerem foco em impacto e aplicação posterior." };
 
     return { model: "gagne", reason: "Modelo padrão para avaliar estrutura, sequência e lógica da aula." };
   }
@@ -868,14 +822,10 @@
   function startAnalysisLoading(noteEl) {
     stopAnalysisLoading();
     let idx = 0;
-    if (noteEl) {
-      noteEl.innerHTML = `<span class="analyzing">${ANALYSIS_MESSAGES[0]}</span>`;
-    }
+    if (noteEl) noteEl.innerHTML = `<span class="analyzing">${ANALYSIS_MESSAGES[0]}</span>`;
     analysisMessageInterval = setInterval(() => {
       idx = (idx + 1) % ANALYSIS_MESSAGES.length;
-      if (noteEl) {
-        noteEl.innerHTML = `<span class="analyzing">${ANALYSIS_MESSAGES[idx]}</span>`;
-      }
+      if (noteEl) noteEl.innerHTML = `<span class="analyzing">${ANALYSIS_MESSAGES[idx]}</span>`;
     }, 1200);
   }
 
@@ -981,7 +931,8 @@
     await renderHistory();
     alert("Gravação deletada.");
   }
-    function fillConfigFields(cfg = {}) {
+
+  function fillConfigFields(cfg = {}) {
     const finalCfg = { ...getDefaultConfig(), ...cfg };
     const set = (id, val) => {
       const el = document.getElementById(id);
@@ -1006,7 +957,7 @@
       subject: document.getElementById("postSubject")?.value.trim() || "",
       topicObjective: document.getElementById("postTopicObjective")?.value.trim() || "",
       specificStudents: document.getElementById("postSpecificStudents")?.value.trim() || "",
-      durationMinutes: document.getElementById("postDurationMinutes")?.value.trim() || "",
+      durationMinutes: document.getElementById("postDurationMinutes")?.value.trim() || ""
     };
   }
 
@@ -1023,12 +974,9 @@
     if (cfg.topicObjective) parts.push(cfg.topicObjective);
     if (cfg.specificStudents) parts.push(cfg.specificStudents);
 
-    if (!parts.length) {
-      summary.textContent = "Inclua detalhes de Local, Curso, Turma etc., para melhor sua análise.";
-      return;
-    }
-
-    summary.textContent = parts.join(" / ");
+    summary.textContent = parts.length
+      ? parts.join(" / ")
+      : "Inclua detalhes de Local, Curso, Turma etc., para melhor sua análise.";
   }
 
   function currentSelectedModelKey() {
@@ -1077,7 +1025,7 @@
       "postSubject",
       "postTopicObjective",
       "postSpecificStudents",
-      "postDurationMinutes",
+      "postDurationMinutes"
     ].forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -1112,8 +1060,7 @@
       </div>
     `).join("");
   }
-
-  function renderSlider(label, id, value) {
+    function renderSlider(label, id, value) {
     return `
       <div class="range-wrap">
         <label>
@@ -1176,7 +1123,6 @@
     ].filter(v => !Number.isNaN(v));
 
     if (!vals.length) return null;
-
     const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
     return Number(avg.toFixed(1));
   }
@@ -1276,7 +1222,8 @@
     const url = `https://wa.me/?text=${encodeURIComponent(buildWhatsAppText(record))}`;
     window.open(url, "_blank");
   }
-    function renderQuickAnalysis(record) {
+
+  function renderQuickAnalysis(record) {
     analysisBlock.classList.remove("hidden");
     const strengths = extractQuickStrengths(record);
     const improvements = extractQuickImprovements(record);
@@ -1510,12 +1457,7 @@
     `;
 
     applyRangeColors([
-      "cur-preparacao",
-      "cur-motivacao",
-      "cur-fisico",
-      "cur-mental",
-      "cur-infraestrutura",
-      "cur-satisfacao"
+      "cur-preparacao","cur-motivacao","cur-fisico","cur-mental","cur-infraestrutura","cur-satisfacao"
     ]);
 
     document.getElementById("saveEvalBtn").onclick = () => saveSelfEvaluation(record.id, {
@@ -1537,8 +1479,7 @@
     document.getElementById("deleteAudioBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareAudioBtn").onclick = () => shareRecording(record.id);
   }
-
-  async function openHistoryRecord(recordId) {
+    async function openHistoryRecord(recordId) {
     const record = await getRecord(recordId);
     if (!record) return;
     renderAnalysis(record);
@@ -1656,7 +1597,7 @@
         `${i + 1}. ${row.criterion || ""}`,
         `Evidência: ${row.evidence || "—"}`,
         `Avaliação: ${row.evaluation || "—"}`,
-        `Observações: ${row.observation || "—"}`,
+        `Observações: ${row.observation || "—"}`
       ];
       lines.forEach((line, idx) => {
         if (y > 280) {
@@ -1746,11 +1687,12 @@
 
     doc.save(`orelho-relatorio-${Date.now()}.pdf`);
   }
-    async function runAnalyze(record, depth = "full") {
+
+  async function runAnalyze(record, depth = "full") {
     const note = document.getElementById("analyzeConnectionNote");
 
     if (!navigator.onLine) {
-      note.textContent = "Sem conexão para analisar.";
+      if (note) note.textContent = "Sem conexão para analisar.";
       return null;
     }
 
@@ -1759,7 +1701,7 @@
     const blob = await getAudioBlob(record.id);
     if (!blob) {
       stopAnalysisLoading();
-      note.textContent = "Gravação não encontrada.";
+      if (note) note.textContent = "Gravação não encontrada.";
       return null;
     }
 
@@ -1778,6 +1720,7 @@
     fd.append("analysisModelSource", record.analysisModelSource || "auto");
     fd.append("analysisModelReason", record.analysisModelReason || "");
     fd.append("analysisDepth", depth);
+    fd.append("mode", depth);
 
     let data;
     try {
@@ -1790,7 +1733,7 @@
     stopAnalysisLoading();
 
     if (data.error) {
-      note.textContent = data.error;
+      if (note) note.textContent = data.error;
       return null;
     }
 
@@ -1804,7 +1747,7 @@
     record.analysisModelSource = data.model_source || record.analysisModelSource || "auto";
 
     await putRecord(record);
-    note.textContent = depth === "quick" ? "Análise rápida concluída." : "Análise concluída.";
+    if (note) note.textContent = depth === "quick" ? "Análise rápida concluída." : "Análise completa concluída.";
     return record;
   }
 
@@ -1930,11 +1873,10 @@
 
         ${buildPostRecordModelSection(cfg)}
 
-        <button class="primary-wide" id="quickAnalyzeBtn">Análise rápida</button>
-        <div class="small" style="margin-top:6px;">Visão direta da aula em poucos segundos.</div>
-
-        <button class="ghost" id="fullAnalyzeBtn" style="width:100%;margin-top:10px;">Análise completa</button>
-        <div class="small" style="margin-top:6px;">Estrutura pedagógica detalhada.</div>
+        <div class="analysis-choice-row">
+          <button class="quick-btn" id="quickAnalyzeBtn">Análise rápida</button>
+          <button class="full-btn" id="fullAnalyzeBtn">Análise completa</button>
+        </div>
 
         <div class="small" id="analyzeConnectionNote" style="margin-top:10px;">
           ${navigator.onLine ? "" : "Sem conexão para analisar."}
@@ -2085,48 +2027,12 @@
                     ? `<div class="small" style="margin-top:8px;">Preencha a autoavaliação para ativar os gráficos.</div>`
                     : `
                       <div class="dashboard-grid">
-                        <div class="chart-card">
-                          <div class="chart-title">Minha preparação prévia</div>
-                          <div class="chart-wrap">
-                            <canvas id="chartPreparacao"></canvas>
-                            <div class="chart-insight"></div>
-                          </div>
-                        </div>
-                        <div class="chart-card">
-                          <div class="chart-title">Minha motivação prévia</div>
-                          <div class="chart-wrap">
-                            <canvas id="chartMotivacao"></canvas>
-                            <div class="chart-insight"></div>
-                          </div>
-                        </div>
-                        <div class="chart-card">
-                          <div class="chart-title">Meu estado físico na gravação</div>
-                          <div class="chart-wrap">
-                            <canvas id="chartFisico"></canvas>
-                            <div class="chart-insight"></div>
-                          </div>
-                        </div>
-                        <div class="chart-card">
-                          <div class="chart-title">Meu estado mental/emocional na gravação</div>
-                          <div class="chart-wrap">
-                            <canvas id="chartMental"></canvas>
-                            <div class="chart-insight"></div>
-                          </div>
-                        </div>
-                        <div class="chart-card">
-                          <div class="chart-title">Infraestrutura funcionando na gravação</div>
-                          <div class="chart-wrap">
-                            <canvas id="chartInfraestrutura"></canvas>
-                            <div class="chart-insight"></div>
-                          </div>
-                        </div>
-                        <div class="chart-card">
-                          <div class="chart-title">Minha satisfação final</div>
-                          <div class="chart-wrap">
-                            <canvas id="chartSatisfacao"></canvas>
-                            <div class="chart-insight"></div>
-                          </div>
-                        </div>
+                        <div class="chart-card"><div class="chart-title">Minha preparação prévia</div><div class="chart-wrap"><canvas id="chartPreparacao"></canvas><div class="chart-insight"></div></div></div>
+                        <div class="chart-card"><div class="chart-title">Minha motivação prévia</div><div class="chart-wrap"><canvas id="chartMotivacao"></canvas><div class="chart-insight"></div></div></div>
+                        <div class="chart-card"><div class="chart-title">Meu estado físico na gravação</div><div class="chart-wrap"><canvas id="chartFisico"></canvas><div class="chart-insight"></div></div></div>
+                        <div class="chart-card"><div class="chart-title">Meu estado mental/emocional na gravação</div><div class="chart-wrap"><canvas id="chartMental"></canvas><div class="chart-insight"></div></div></div>
+                        <div class="chart-card"><div class="chart-title">Infraestrutura funcionando na gravação</div><div class="chart-wrap"><canvas id="chartInfraestrutura"></canvas><div class="chart-insight"></div></div></div>
+                        <div class="chart-card"><div class="chart-title">Minha satisfação final</div><div class="chart-wrap"><canvas id="chartSatisfacao"></canvas><div class="chart-insight"></div></div></div>
                       </div>
                     `
                 }
@@ -2255,9 +2161,7 @@
 
     recorder.onstop = async () => {
       clearInterval(timerInterval);
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
-      }
+      if (stream) stream.getTracks().forEach((t) => t.stop());
 
       const blob = new Blob(chunks, { type: chunks[0]?.type || "audio/webm" });
       const saved = { ...getDefaultConfig(), ...getConfig() };
