@@ -87,16 +87,8 @@
       margin-top:12px;
     }
 
-    .analysis-choice-row{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-      margin-top:12px;
-    }
-
     @media(max-width:700px){
-      .secondary-row,
-      .analysis-choice-row{grid-template-columns:1fr}
+      .secondary-row{grid-template-columns:1fr}
     }
 
     button{
@@ -122,18 +114,6 @@
       width:100%;
       padding:16px 18px;
       font-size:16px;
-    }
-
-    .quick-btn{
-      background:var(--blue);
-      color:#fff;
-      width:100%;
-    }
-
-    .full-btn{
-      background:var(--orange);
-      color:#fff;
-      width:100%;
     }
 
     .ghost{
@@ -519,6 +499,129 @@
       padding:0;
     }
 
+    .switch-row{
+      margin-top:16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .switch-help{
+      width:100%;
+      text-align:center;
+      font-size:12px;
+      color:var(--muted);
+      margin-top:2px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider-switch {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #d1d5db;
+      border-radius: 999px;
+      transition: 0.3s;
+    }
+
+    .slider-switch:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      top: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.3s;
+      box-shadow: 0 2px 6px rgba(0,0,0,.12);
+    }
+
+    .switch input:checked + .slider-switch {
+      background-color: var(--blue);
+    }
+
+    .switch input:checked + .slider-switch:before {
+      transform: translateX(22px);
+    }
+
+    .adherence-card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      background:linear-gradient(180deg,#ffffff 0%, #f6f8fb 100%);
+      padding:16px;
+      margin-top:12px;
+      text-align:center;
+    }
+
+    .adherence-title{
+      font-size:12px;
+      letter-spacing:.08em;
+      color:var(--muted);
+      font-weight:700;
+      text-transform:uppercase;
+    }
+
+    .adherence-score{
+      font-size:46px;
+      font-weight:800;
+      line-height:1;
+      margin-top:8px;
+      letter-spacing:-.03em;
+    }
+
+    .adherence-bar{
+      margin-top:10px;
+      font-size:20px;
+      letter-spacing:2px;
+      color:var(--blue);
+      min-height:24px;
+    }
+
+    .adherence-meta{
+      margin-top:8px;
+      font-size:13px;
+      color:var(--muted);
+      min-height:18px;
+    }
+
+    .adherence-summary{
+      margin-top:10px;
+      font-size:14px;
+      color:var(--text);
+      min-height:20px;
+      font-weight:700;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #16a34a;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 10px;
+    }
+
+    .subtle-action{
+      margin-top:12px;
+    }
+
     @keyframes pulse{
       0%{opacity:0.3}
       50%{opacity:1}
@@ -535,6 +638,15 @@
     <div class="controls">
       <button id="startBtn" class="primary">GRAVAR</button>
       <button id="stopBtn" class="danger" disabled>ENCERRAR</button>
+    </div>
+
+    <div class="switch-row">
+      <span class="small">Análise completa automática</span>
+      <label class="switch">
+        <input type="checkbox" id="fullAnalysisToggle" />
+        <span class="slider-switch"></span>
+      </label>
+      <div class="switch-help" id="fullAnalysisToggleHelp">Análise rápida automática após ENCERRAR</div>
     </div>
 
     <div id="timer" class="metric">00:00</div>
@@ -557,6 +669,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   const CONFIG_KEY = "orelho_last_config_v1";
+  const FULL_ANALYSIS_PREF_KEY = "orelho_full_analysis";
   const DB_NAME = "orelho_app_v3";
   const DB_VERSION = 1;
   const RECORDS_STORE = "records";
@@ -572,6 +685,18 @@
     tpack: { label: "TPACK", description: "Híbrida / EAD • Todos os níveis • Domínio de tecnologia tanto quanto do tema." },
     reggio: { label: "Reggio Emilia", description: "Presencial • Educação Infantil • Exploração sensorial e autonomia criativa." },
     kirkpatrick: { label: "Kirkpatrick", description: "Avaliação de impacto • Corporativo • Resultado e aplicação prática." }
+  };
+
+  const MODEL_TOTALS = {
+    gagne: 9,
+    bloom: 6,
+    merrill: 5,
+    arcs: 4,
+    addie: 5,
+    assure: 6,
+    tpack: 3,
+    reggio: 6,
+    kirkpatrick: 4
   };
 
   const ANALYSIS_MESSAGES = [
@@ -606,6 +731,8 @@
   const analysisBlock = document.getElementById("analysisBlock");
   const historyBlock = document.getElementById("historyBlock");
   const audioModalRoot = document.getElementById("audioModalRoot");
+  const fullAnalysisToggle = document.getElementById("fullAnalysisToggle");
+  const fullAnalysisToggleHelp = document.getElementById("fullAnalysisToggleHelp");
 
   function pad(n){ return String(n).padStart(2,"0"); }
   function fmtDuration(seconds){ const m=Math.floor(seconds/60), s=seconds%60; return `${pad(m)}:${pad(s)}`; }
@@ -654,6 +781,21 @@
       analysisModelSource: "auto",
       analysisModelReason: "Modelo padrão."
     };
+  }
+
+  function getFullAnalysisPreference() {
+    return localStorage.getItem(FULL_ANALYSIS_PREF_KEY) === "true";
+  }
+
+  function setFullAnalysisPreference(value) {
+    localStorage.setItem(FULL_ANALYSIS_PREF_KEY, value ? "true" : "false");
+  }
+
+  function updateFullAnalysisToggleHelp() {
+    if (!fullAnalysisToggleHelp || !fullAnalysisToggle) return;
+    fullAnalysisToggleHelp.textContent = fullAnalysisToggle.checked
+      ? "Análise rápida + análise completa automáticas após ENCERRAR"
+      : "Análise rápida automática após ENCERRAR";
   }
 
   async function openAppDB() {
@@ -794,7 +936,8 @@
       btn.ontouchcancel = stop;
     });
   }
-    function inferModelFromConfig(config) {
+
+  function inferModelFromConfig(config) {
     const haystack = [
       config.localInstitution,
       config.yearLevel,
@@ -1060,7 +1203,8 @@
       </div>
     `).join("");
   }
-    function renderSlider(label, id, value) {
+
+  function renderSlider(label, id, value) {
     return `
       <div class="range-wrap">
         <label>
@@ -1159,6 +1303,179 @@
     );
   }
 
+  function estimateInitialAdherencePercent(record) {
+    const durationMin = (record.durationSeconds || 0) / 60;
+    const cfg = record.config || {};
+    let score = 58;
+
+    if (durationMin >= 10) score += 6;
+    if (durationMin >= 20) score += 4;
+    if (durationMin >= 35) score += 3;
+
+    if (cfg.subject) score += 4;
+    if (cfg.topicObjective) score += 6;
+    if (cfg.classId) score += 2;
+    if (cfg.courseId) score += 2;
+    if (cfg.localInstitution) score += 2;
+    if (cfg.durationMinutes) score += 2;
+
+    return Math.max(45, Math.min(92, Math.round(score)));
+  }
+
+  function inferCriterionSatisfied(row = {}) {
+    const text = `${row.evidence || ""} ${row.evaluation || ""} ${row.observation || ""}`.toLowerCase();
+
+    const positiveTerms = [
+      "bom","boa","boas","claro","clara","consistente","adequado","adequada","presente",
+      "forte","efetivo","efetiva","atingido","atingida","atendido","atendida","houve",
+      "organizado","organizada","coerente","suficiente","objetivo claro","participação"
+    ];
+
+    const negativeTerms = [
+      "ausente","insuficiente","fraco","fraca","limitado","limitada","não ficou","nao ficou",
+      "parcial","superficial","pouco","pouca","faltou","baixo","baixa","inconsistente",
+      "não houve","nao houve","confuso","confusa"
+    ];
+
+    const positiveHits = positiveTerms.filter(t => text.includes(t)).length;
+    const negativeHits = negativeTerms.filter(t => text.includes(t)).length;
+
+    if (negativeHits > positiveHits) return false;
+    if (positiveHits > 0) return true;
+    if ((row.evidence || "").trim()) return true;
+    return false;
+  }
+
+  function computeAdherenceFromRecord(record) {
+    const model = record.analysisModel || "gagne";
+    const total = MODEL_TOTALS[model] || Math.max(1, (record.structure || []).length || 1);
+    const rows = Array.isArray(record.structure) ? record.structure : [];
+
+    if (!rows.length) {
+      const fallbackPercent = record.adherencePercent || record.quickAdherencePercent || estimateInitialAdherencePercent(record);
+      const score = Math.max(1, Math.round((fallbackPercent / 100) * total));
+      return {
+        percent: fallbackPercent,
+        score,
+        total
+      };
+    }
+
+    const consideredRows = rows.slice(0, total);
+    let score = consideredRows.filter(inferCriterionSatisfied).length;
+
+    if (!score) {
+      score = Math.max(1, Math.round(total * ((record.quickAdherencePercent || 55) / 100)));
+    }
+
+    const percent = Math.max(0, Math.min(100, Math.round((score / total) * 100)));
+    return { percent, score, total };
+  }
+
+  function renderAdherenceVisual(percent, score, total) {
+    const filled = Math.max(0, Math.min(10, Math.round(percent / 10)));
+    const bar = "■".repeat(filled) + "□".repeat(10 - filled);
+    return {
+      bar,
+      text: `${score}/${total} • ${percent}%`
+    };
+  }
+
+  function updateInlineAdherenceUI(record, options = {}) {
+    const scoreEl = document.getElementById("inlineAdherenceScore");
+    const barEl = document.getElementById("inlineAdherenceBar");
+    const metaEl = document.getElementById("inlineAdherenceMeta");
+    const summaryEl = document.getElementById("inlineAdherenceSummary");
+    const badgeWrap = document.getElementById("fullAnalysisBadgeWrap");
+    const manualFullWrap = document.getElementById("manualFullActionWrap");
+
+    if (!scoreEl || !barEl || !metaEl || !summaryEl) return;
+
+    const percent = options.percent ?? record.adherencePercent ?? record.quickAdherencePercent ?? 0;
+    const score = options.score ?? record.adherenceScore ?? Math.max(1, Math.round(percent / 10));
+    const total = options.total ?? record.adherenceTotal ?? 10;
+    const visual = renderAdherenceVisual(percent, score, total);
+
+    scoreEl.textContent = `${percent}%`;
+    barEl.textContent = visual.bar;
+    metaEl.textContent = options.meta || record.adherenceStatusText || "";
+    summaryEl.textContent = options.summary || record.tldr || "";
+
+    if (badgeWrap) {
+      badgeWrap.innerHTML = record.fullAnalysisReady
+        ? `<div class="status-badge">✔ Análise completa pronta</div>`
+        : "";
+    }
+
+    if (manualFullWrap) {
+      const shouldShowManual = !getFullAnalysisPreference() && record.quickAnalysisReady && !record.fullAnalysisReady;
+      manualFullWrap.innerHTML = shouldShowManual
+        ? `
+          <div class="subtle-action">
+            <button class="ghost" id="runFullAnalysisBtn" style="width:100%;">Executar análise completa</button>
+            <div class="small" style="margin-top:6px;">Usa IA para análise aprofundada</div>
+          </div>
+        `
+        : "";
+
+      const btn = document.getElementById("runFullAnalysisBtn");
+      if (btn) {
+        btn.onclick = async () => {
+          btn.disabled = true;
+          btn.textContent = "Analisando...";
+          btn.classList.add("analyzing");
+          const latest = await getRecord(record.id);
+          if (!latest) return;
+          const analyzed = await runAnalyze(latest, "full");
+          if (analyzed) {
+            analyzed.fullAnalysisReady = true;
+            analyzed.adherenceStatusText = "Atualizado com análise completa";
+            await putRecord(analyzed);
+            updateInlineAdherenceFromAnalysis(analyzed, true);
+            renderAnalysis(analyzed);
+            await renderHistory();
+          }
+        };
+      }
+    }
+  }
+
+  function updateInlineAdherenceFromEstimate(record) {
+    const percent = estimateInitialAdherencePercent(record);
+    record.quickAdherencePercent = percent;
+    record.adherencePercent = percent;
+    record.adherenceStatusText = "Estimativa inicial";
+    const total = MODEL_TOTALS[record.analysisModel || "gagne"] || 10;
+    const score = Math.max(1, Math.round((percent / 100) * total));
+    record.adherenceScore = score;
+    record.adherenceTotal = total;
+
+    updateInlineAdherenceUI(record, {
+      percent,
+      score,
+      total,
+      meta: "Estimativa inicial",
+      summary: ""
+    });
+  }
+
+  function updateInlineAdherenceFromAnalysis(record, isFull = false) {
+    const adherence = computeAdherenceFromRecord(record);
+    record.adherencePercent = adherence.percent;
+    record.adherenceScore = adherence.score;
+    record.adherenceTotal = adherence.total;
+    record.adherenceStatusText = isFull ? "Atualizado com análise completa" : "Atualizado com análise rápida";
+    record.quickAnalysisReady = true;
+
+    updateInlineAdherenceUI(record, {
+      percent: adherence.percent,
+      score: adherence.score,
+      total: adherence.total,
+      meta: record.adherenceStatusText,
+      summary: record.tldr || ""
+    });
+  }
+
   function renderStructureBlocks(record) {
     const rows = Array.isArray(record.structure) ? record.structure : [];
     return rows.map((row, i) => `
@@ -1189,24 +1506,6 @@
     `;
   }
 
-  function extractQuickStrengths(record) {
-    const rows = Array.isArray(record.structure) ? record.structure : [];
-    const items = rows
-      .map(r => r.evaluation || r.observation || r.criterion || "")
-      .filter(Boolean)
-      .slice(0, 3);
-    return items.length ? items : ["Há pontos fortes identificados na aula."];
-  }
-
-  function extractQuickImprovements(record) {
-    const rows = Array.isArray(record.structure) ? record.structure : [];
-    const items = rows
-      .map(r => r.observation || r.evaluation || "")
-      .filter(Boolean)
-      .slice(0, 3);
-    return items.length ? items : ["Há oportunidades de melhoria para aprofundar na análise completa."];
-  }
-
   function copySummaryText(text) {
     navigator.clipboard.writeText(text || "");
     alert("Resumo copiado.");
@@ -1215,56 +1514,13 @@
   function buildWhatsAppText(record) {
     const score = getLessonScore(record);
     const model = record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || "Gagné";
-    return `Resumo da aula:\n${record.tldr || ""}\n\nNota da Aula: ${score ?? "-"}\nModelo: ${model}`;
+    const adherenceText = record.adherencePercent ? `Aderência: ${record.adherencePercent}%\n` : "";
+    return `Resumo da aula:\n${record.tldr || ""}\n\n${adherenceText}Nota da Aula: ${score ?? "-"}\nModelo: ${model}`;
   }
 
   function shareWhatsApp(record) {
     const url = `https://wa.me/?text=${encodeURIComponent(buildWhatsAppText(record))}`;
     window.open(url, "_blank");
-  }
-
-  function renderQuickAnalysis(record) {
-    analysisBlock.classList.remove("hidden");
-    const strengths = extractQuickStrengths(record);
-    const improvements = extractQuickImprovements(record);
-
-    analysisBlock.innerHTML = `
-      <div class="card">
-        <div class="section-title">Análise rápida</div>
-
-        <div class="quick-block">
-          <strong>Resumo</strong>
-          <div style="margin-top:8px;">${escapeHtml(record.tldr || "Sem resumo disponível.")}</div>
-        </div>
-
-        <div class="quick-block">
-          <strong>Pontos fortes</strong>
-          <ul class="quick-list">
-            ${strengths.map(s => `<li>${escapeHtml(s)}</li>`).join("")}
-          </ul>
-        </div>
-
-        <div class="quick-block">
-          <strong>Melhorias</strong>
-          <ul class="quick-list">
-            ${improvements.map(s => `<li>${escapeHtml(s)}</li>`).join("")}
-          </ul>
-        </div>
-
-        <div class="controls">
-          <button class="primary" id="deepAnalysisBtn">Aprofundar análise</button>
-          <button class="ghost" id="copySummaryBtn">Copiar resumo</button>
-          <button class="ghost" id="whatsSummaryBtn">WhatsApp</button>
-        </div>
-      </div>
-    `;
-
-    document.getElementById("deepAnalysisBtn").onclick = async () => {
-      const latest = await getRecord(record.id);
-      if (latest) renderAnalysis(latest);
-    };
-    document.getElementById("copySummaryBtn").onclick = () => copySummaryText(record.tldr || "");
-    document.getElementById("whatsSummaryBtn").onclick = () => shareWhatsApp(record);
   }
 
   async function saveSelfEvaluation(recordId, idsMap) {
@@ -1479,7 +1735,8 @@
     document.getElementById("deleteAudioBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareAudioBtn").onclick = () => shareRecording(record.id);
   }
-    async function openHistoryRecord(recordId) {
+
+  async function openHistoryRecord(recordId) {
     const record = await getRecord(recordId);
     if (!record) return;
     renderAnalysis(record);
@@ -1551,6 +1808,12 @@
     doc.setFontSize(12);
     doc.text("Nota da Aula", 15, y);
     y += 12;
+
+    if (record.adherencePercent) {
+      doc.setFont("helvetica","bold");
+      doc.text(`Aderência: ${record.adherencePercent}%`, 15, y);
+      y += 8;
+    }
 
     doc.setFont("helvetica","bold");
     doc.text(`Modelo: ${model}`, 15, y);
@@ -1873,9 +2136,14 @@
 
         ${buildPostRecordModelSection(cfg)}
 
-        <div class="analysis-choice-row">
-          <button class="quick-btn" id="quickAnalyzeBtn">Análise rápida</button>
-          <button class="full-btn" id="fullAnalyzeBtn">Análise completa</button>
+        <div class="adherence-card">
+          <div class="adherence-title">Aderência</div>
+          <div class="adherence-score" id="inlineAdherenceScore">--%</div>
+          <div class="adherence-bar" id="inlineAdherenceBar">□□□□□□□□□□</div>
+          <div class="adherence-meta" id="inlineAdherenceMeta"></div>
+          <div class="adherence-summary" id="inlineAdherenceSummary"></div>
+          <div id="fullAnalysisBadgeWrap"></div>
+          <div id="manualFullActionWrap"></div>
         </div>
 
         <div class="small" id="analyzeConnectionNote" style="margin-top:10px;">
@@ -1897,6 +2165,7 @@
     bindDetailsInputs();
     updatePostDetailsSummary();
     updateModelSuggestionUI();
+    updateInlineAdherenceFromEstimate(record);
 
     document.getElementById("toggleDetailsBtn").onclick = () => {
       const block = document.getElementById("detailsBlock");
@@ -1917,60 +2186,37 @@
       });
     });
 
-    async function persistCurrentConfig() {
-      const newCfg = {
-        ...readPostConfig(),
-        analysisModel: document.getElementById("postAnalysisModel").value,
-        analysisModelSource: document.getElementById("postAnalysisModelSource").value,
-        analysisModelReason: document.getElementById("postAnalysisModelReason").value,
-      };
-
-      saveConfig(newCfg);
-
-      const current = await getRecord(record.id);
-      if (!current) return null;
-
-      current.config = {
-        localInstitution: newCfg.localInstitution,
-        yearLevel: newCfg.yearLevel,
-        courseId: newCfg.courseId,
-        classId: newCfg.classId,
-        subject: newCfg.subject,
-        topicObjective: newCfg.topicObjective,
-        specificStudents: newCfg.specificStudents,
-        durationMinutes: newCfg.durationMinutes,
-      };
-      current.analysisModel = newCfg.analysisModel;
-      current.analysisModelSource = newCfg.analysisModelSource;
-      current.analysisModelReason = newCfg.analysisModelReason;
-
-      await putRecord(current);
-      return current;
-    }
-
-    document.getElementById("quickAnalyzeBtn").onclick = async () => {
-      const current = await persistCurrentConfig();
-      if (!current) return;
-      const analyzed = await runAnalyze(current, "quick");
-      if (analyzed) {
-        renderQuickAnalysis(analyzed);
-        await renderHistory();
-      }
-    };
-
-    document.getElementById("fullAnalyzeBtn").onclick = async () => {
-      const current = await persistCurrentConfig();
-      if (!current) return;
-      const analyzed = await runAnalyze(current, "full");
-      if (analyzed) {
-        renderAnalysis(analyzed);
-        await renderHistory();
-      }
-    };
-
     document.getElementById("listenBtn").onclick = () => openAudioPlayer(record.id);
     document.getElementById("deleteBtn").onclick = () => deleteRecording(record.id);
     document.getElementById("shareBtn").onclick = () => shareRecording(record.id);
+  }
+
+  async function autoRunQuickAndMaybeFull(recordId) {
+    let record = await getRecord(recordId);
+    if (!record) return;
+
+    updateInlineAdherenceFromEstimate(record);
+
+    const quickAnalyzed = await runAnalyze(record, "quick");
+    if (!quickAnalyzed) return;
+
+    quickAnalyzed.quickAnalysisReady = true;
+    updateInlineAdherenceFromAnalysis(quickAnalyzed, false);
+    await putRecord(quickAnalyzed);
+    await renderHistory();
+
+    if (getFullAnalysisPreference()) {
+      const fullAnalyzed = await runAnalyze(quickAnalyzed, "full");
+      if (!fullAnalyzed) return;
+      fullAnalyzed.fullAnalysisReady = true;
+      updateInlineAdherenceFromAnalysis(fullAnalyzed, true);
+      await putRecord(fullAnalyzed);
+      renderAnalysis(fullAnalyzed);
+      await renderHistory();
+      return;
+    }
+
+    updateInlineAdherenceUI(quickAnalyzed);
   }
 
   async function clearAllHistory() {
@@ -2043,6 +2289,7 @@
                       <div class="history-title">${formatDateTime(record.createdAt)}</div>
                       <div class="small" style="margin-bottom:6px;">${escapeHtml(record.tldr || "Sem resumo disponível.")}</div>
                       <div>
+                        ${record.adherencePercent ? `<span class="pill">${record.adherencePercent}% de aderência</span>` : ""}
                         ${buildTagsFromConfig(record.config, record.analysisModelLabel || MODEL_CATALOG[record.analysisModel || "gagne"]?.label || "").map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}
                         ${hasUsableSelfEval(record) ? `<span class="pill">autoavaliação disponível</span>` : `<span class="pill">autoavaliação pendente</span>`}
                         <span class="pill">${record.analysisModelSource === "user" ? "modelo definido por você" : "modelo sugerido"}</span>
@@ -2144,6 +2391,7 @@
     startTime = Date.now();
     startBtn.disabled = true;
     stopBtn.disabled = false;
+    if (fullAnalysisToggle) fullAnalysisToggle.disabled = true;
     statusLive.textContent = "Gravação em andamento";
 
     timerInterval = setInterval(() => {
@@ -2163,12 +2411,14 @@
       clearInterval(timerInterval);
       if (stream) stream.getTracks().forEach((t) => t.stop());
 
+      const durationSeconds = Math.max(1, Math.floor((Date.now() - startTime) / 1000));
       const blob = new Blob(chunks, { type: chunks[0]?.type || "audio/webm" });
       const saved = { ...getDefaultConfig(), ...getConfig() };
 
       const record = {
         id: "gravacao_" + Date.now(),
         createdAt: new Date().toISOString(),
+        durationSeconds,
         config: {
           localInstitution: saved.localInstitution,
           yearLevel: saved.yearLevel,
@@ -2197,7 +2447,14 @@
         socioSaved: false,
         recorded: true,
         audioSizeBytes: blob.size,
-        analysisStatus: navigator.onLine ? "recorded" : "pending"
+        analysisStatus: navigator.onLine ? "recorded" : "pending",
+        quickAnalysisReady: false,
+        fullAnalysisReady: false,
+        quickAdherencePercent: 0,
+        adherencePercent: 0,
+        adherenceScore: 0,
+        adherenceTotal: 0,
+        adherenceStatusText: ""
       };
 
       await saveAudioBlob(record.id, blob);
@@ -2206,10 +2463,12 @@
       timerEl.textContent = "00:00";
       startBtn.disabled = false;
       stopBtn.disabled = true;
+      if (fullAnalysisToggle) fullAnalysisToggle.disabled = false;
       recorder = null;
 
       renderPostRecord(record);
       await renderHistory();
+      autoRunQuickAndMaybeFull(record.id);
     };
   }
 
@@ -2218,6 +2477,15 @@
 
   window.addEventListener("online", renderConnectionStatus);
   window.addEventListener("offline", renderConnectionStatus);
+
+  if (fullAnalysisToggle) {
+    fullAnalysisToggle.checked = getFullAnalysisPreference();
+    updateFullAnalysisToggleHelp();
+    fullAnalysisToggle.addEventListener("change", () => {
+      setFullAnalysisPreference(fullAnalysisToggle.checked);
+      updateFullAnalysisToggleHelp();
+    });
+  }
 
   async function init() {
     renderConnectionStatus();
